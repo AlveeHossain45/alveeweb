@@ -467,6 +467,23 @@ audio {
                 });
             }
 
+            // --- START: PASSWORD TOGGLE FIX ---
+            const togglePasswordIcon = document.getElementById('togglePasswordIcon');
+            const passwordInput = document.getElementById('password');
+
+            if (togglePasswordIcon && passwordInput) {
+                togglePasswordIcon.addEventListener('click', function () {
+                    // ইনপুটের টাইপ পরিবর্তন করুন (password থেকে text এবং text থেকে password)
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+
+                    // আইকন পরিবর্তন করুন (fa-eye থেকে fa-eye-slash এবং наоборот)
+                    this.classList.toggle('fa-eye-slash');
+                    this.classList.toggle('fa-eye');
+                });
+            }
+            // --- END: PASSWORD TOGGLE FIX ---
+
             const greetingTextEl = document.getElementById('greeting-text');
             const greetingUsernameEl = document.getElementById('greeting-username');
             const userNameDisplay = document.getElementById('user-name-display');
