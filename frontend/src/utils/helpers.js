@@ -9,7 +9,7 @@ import { currentUser, ui } from '../ui.js';
 import { renderNoticesPage } from '../pages/notices.js';
 
 // Your API base URL
-const API_BASE_URL = 'https://smsv2-liart.vercel.app';
+const API_BASE_URL = 'https://alveeweb.vercel.app';
 
 // Safely compose URLs (ensures single slash between base and path)
 const apiUrl = (path) => `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
