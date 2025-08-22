@@ -1,0 +1,318 @@
+import { apiService } from '../apiService.js';
+import { store } from '../store.js';
+import { ui } from '../ui.js';
+import { closeAnimatedModal, generateInitialsAvatar, openBulkInsertModal, openFormModal, showConfirmationModal, showToast, debounce } from '../utils/helpers.js';
+
+export async function renderTeachersPage() {
+    const state = {
+        view: 'departments',
+        selectedDeptId: null,
+        selectedDeptName: '',
+        searchQuery: '',
+        sortConfig: { key: 'name', direction: 'asc' },
+        advancedSearch: {
+            isOpen: false,
+            qualifications: '',
+            minSalary: '',
+            maxSalary: '',
+            hasAddress: false
+        }
+    };
+
+    ui.contentArea.innerHTML = `
+    <div class="h-[70vh] flex flex-col items-center justify-center">
+        <div class="relative w-24 h-24 mb-6">
+            <div class="absolute inset-0 bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 rounded-full opacity-20 animate-pulse"></div>
+            <div class="absolute inset-2 border-t-2 border-l-2 border-purple-500/30 rounded-full animate-spin"></div>
+            <div class="absolute inset-4 flex items-center justify-center">
+                <i class="fas fa-chalkboard-teacher text-3xl text-purple-400 animate-bounce"></i>
+            </div>
+        </div>
+        <h3 class="text-xl font-semibold text-white mb-2">Loading Teacher Directory</h3>
+        <p class="text-sm text-slate-400">Organizing faculty and academic staff...</p>
+    </div>`;
+
+    try {
+        await Promise.all([
+            store.refresh('teachers'),
+            store.refresh('departments')
+        ]);
+    } catch (error) {
+        showToast('Failed to load teacher data', 'error');
+        console.error("Data loading error:", error);
+        return;
+    }
+
+    const allDepartments = store.get('departments');
+    const allTeachers = store.get('teachers');
+
+    const createPageHeader = (title, subtitle, backTarget = null) => {
+        return `
+        <div class="relative overflow-hidden p-8 rounded-2xl mb-8 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 border border-slate-700/50 shadow-xl">
+            <div class="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-purple-600/20 to-pink-600/20 rounded-full filter blur-3xl animate-float"></div>
+            <div class="absolute -bottom-20 -left-20 w-48 h-48 bg-gradient-to-br from-blue-600/20 to-indigo-600/20 rounded-full filter blur-3xl animate-float" style="animation-delay: 2s;"></div>
+            ${backTarget ? `
+            <button data-target="${backTarget}" class="back-btn absolute top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/60 hover:bg-slate-700/80 border border-slate-700/50 transition-all text-slate-300 hover:text-white group">
+                <i class="fas fa-chevron-left text-xs transition-transform group-hover:-translate-x-0.5"></i>
+                <span>Back</span>
+            </button>` : ''}
+            <div class="relative z-10 text-center">
+                <h2 class="text-3xl font-bold text-white mb-2 bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400">${title}</h2>
+                <p class="text-slate-300/80 max-w-2xl mx-auto">${subtitle}</p>
+            </div>
+        </div>`;
+    };
+
+    const createCard = ({ icon, title, count, color, delay, data = {} }) => {
+        const colors = {
+            purple: 'from-purple-500/10 to-indigo-600/20 border-purple-500/20 text-purple-400',
+            pink: 'from-pink-500/10 to-rose-600/20 border-pink-500/20 text-pink-400',
+            blue: 'from-blue-500/10 to-cyan-600/20 border-blue-500/20 text-blue-400',
+            green: 'from-emerald-500/10 to-teal-600/20 border-emerald-500/20 text-emerald-400',
+            orange: 'from-orange-500/10 to-amber-600/20 border-orange-500/20 text-orange-400',
+        };
+        const colorKeys = Object.keys(colors);
+        const selectedColor = colorKeys[delay % colorKeys.length];
+        return `
+        <div class="fade-in-item premium-card cursor-pointer group relative rounded-2xl overflow-hidden transition-all duration-300 
+            bg-gradient-to-br ${colors[selectedColor]} border hover:shadow-xl hover:-translate-y-1.5"
+            style="animation-delay: ${delay * 75}ms;" ${Object.entries(data).map(([k, v]) => `data-${k}="${v}"`).join(' ')}>
+            <div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="p-6 flex items-center gap-5 relative z-10">
+                <div class="w-14 h-14 rounded-xl flex items-center justify-center backdrop-blur-sm bg-white/5 border border-white/10 shadow-lg"><i class="fas ${icon} text-xl"></i></div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">${title}</h3>
+                    <p class="text-xs font-semibold mt-2 text-white/60">${count} ${count === 1 ? 'Teacher' : 'Teachers'}</p>
+                </div>
+                <i class="fas fa-chevron-right text-slate-500 ml-auto transition-transform duration-300 group-hover:translate-x-1 group-hover:text-${selectedColor}-400"></i>
+            </div>
+        </div>`;
+    };
+
+    const createAdvancedSearchPanel = () => {
+        return `
+        <div class="advanced-search-panel mt-6 p-6 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/30 border border-slate-700/50 backdrop-blur-sm transition-all duration-500 overflow-hidden ${state.advancedSearch.isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2"><i class="fas fa-filter text-purple-400"></i> Advanced Filters</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Qualifications</label>
+                    <input type="text" id="qualifications-filter" value="${state.advancedSearch.qualifications}" class="w-full p-2.5 rounded-lg bg-slate-700/60 border border-slate-600/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g., PhD, MSc">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Min Salary (BDT)</label>
+                    <input type="number" id="min-salary-filter" value="${state.advancedSearch.minSalary}" class="w-full p-2.5 rounded-lg bg-slate-700/60 border border-slate-600/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Minimum">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Max Salary (BDT)</label>
+                    <input type="number" id="max-salary-filter" value="${state.advancedSearch.maxSalary}" class="w-full p-2.5 rounded-lg bg-slate-700/60 border border-slate-600/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Maximum">
+                </div>
+                <div class="flex items-end">
+                    <label class="flex items-center mt-2 cursor-pointer">
+                        <div class="relative">
+                            <input type="checkbox" id="has-address-filter" ${state.advancedSearch.hasAddress ? 'checked' : ''} class="sr-only">
+                            <div class="block w-10 h-6 bg-slate-600 rounded-full"></div>
+                            <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform ${state.advancedSearch.hasAddress ? 'translate-x-4 bg-purple-400' : ''}"></div>
+                        </div>
+                        <span class="ml-3 text-sm text-slate-300">Has Address</span>
+                    </label>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="reset-filters-btn" class="px-4 py-2 rounded-lg bg-slate-700/60 hover:bg-slate-700 text-slate-300 border border-slate-600/50 transition-colors">Reset Filters</button>
+                <button id="apply-filters-btn" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white transition-all">Apply Filters</button>
+            </div>
+        </div>`;
+    };
+
+    const renderDepartmentView = () => {
+        const deptData = allDepartments.map(dept => ({ ...dept, teacherCount: allTeachers.filter(t => t.departmentId?.id === dept.id).length }));
+        ui.contentArea.innerHTML = `
+        <div class="animate-fade-in">
+            ${createPageHeader('Teacher Directory', 'Browse faculty by their primary department')}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                ${deptData.map((dept, i) => createCard({ icon: 'fa-building', title: dept.name, count: dept.teacherCount, delay: i, data: { id: dept.id, name: dept.name } })).join('')}
+            </div>
+        </div>`;
+        document.querySelectorAll('.premium-card').forEach(card => { card.onclick = () => { state.view = 'teachers'; state.selectedDeptId = card.dataset.id; state.selectedDeptName = card.dataset.name; mainRender(); }; });
+    };
+
+    const applyAdvancedFilters = (teachers) => {
+        let filtered = [...teachers];
+        if (state.advancedSearch.qualifications) { const qualQuery = state.advancedSearch.qualifications.toLowerCase(); filtered = filtered.filter(t => t.qualifications && t.qualifications.toLowerCase().includes(qualQuery)); }
+        if (state.advancedSearch.minSalary) { const minSalary = parseFloat(state.advancedSearch.minSalary); filtered = filtered.filter(t => t.baseSalary && parseFloat(t.baseSalary) >= minSalary); }
+        if (state.advancedSearch.maxSalary) { const maxSalary = parseFloat(state.advancedSearch.maxSalary); filtered = filtered.filter(t => t.baseSalary && parseFloat(t.baseSalary) <= maxSalary); }
+        if (state.advancedSearch.hasAddress) { filtered = filtered.filter(t => t.address && t.address.trim().length > 0); }
+        return filtered;
+    };
+
+    const renderTeacherList = (teachersToDisplay) => {
+        const tableBody = document.getElementById('teacher-table-body');
+        if (!tableBody) return;
+        const countDisplay = document.getElementById('teacher-count-display');
+        const totalTeachersInDept = allTeachers.filter(t => t.departmentId?.id === state.selectedDeptId).length;
+        if (countDisplay) {
+            let countText = `Showing ${teachersToDisplay.length} of ${totalTeachersInDept} teachers`;
+            if (Object.values(state.advancedSearch).some(val => val !== '' && val !== false)) { countText += ' <span class="ml-2 px-2 py-1 bg-purple-500/20 text-purple-300 rounded-full text-xs">Filters Applied</span>'; }
+            countDisplay.innerHTML = countText;
+        }
+        if (teachersToDisplay.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8"><div class="flex flex-col items-center justify-center text-slate-400"><i class="fas fa-user-slash text-4xl mb-4 text-purple-500/50"></i><p class="text-lg font-medium">No teachers found</p><p class="text-sm mt-1">${state.searchQuery || Object.values(state.advancedSearch).some(val => val !== '' && val !== false) ? 'Try adjusting your search or filters' : 'No teachers are assigned to this department yet'}</p></div></td></tr>`;
+            return;
+        }
+        tableBody.innerHTML = teachersToDisplay.map(teacher => `
+            <tr class="hover:bg-slate-700/30 transition-colors group">
+                <td class="p-4"><div class="flex items-center gap-3"><div class="relative"><img src="${teacher.profileImage || generateInitialsAvatar(teacher.name)}" alt="${teacher.name}" class="w-10 h-10 rounded-full object-cover border-2 border-slate-600 group-hover:border-purple-500 transition-colors"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-slate-800"></div></div><div><p class="font-semibold text-white">${teacher.name}</p><a href="mailto:${teacher.email}" class="text-xs text-slate-400 hover:text-blue-400 transition-colors">${teacher.email}</a></div></div></td>
+                <td class="p-4"><div class="flex flex-col"><span class="text-white">${teacher.contact || 'N/A'}</span>${teacher.address ? `<span class="text-xs text-slate-400 truncate max-w-xs">${teacher.address}</span>` : ''}</div></td>
+                <td class="p-4"><div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-700/50 border border-slate-600/50"><i class="fas fa-graduation-cap text-xs text-purple-400"></i><span>${teacher.qualifications || 'N/A'}</span></div></td>
+                <td class="p-4"><div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-700/50 border border-slate-600/50"><i class="fas fa-money-bill-wave text-xs text-green-400"></i><span>${teacher.baseSalary ? 'BDT ' + parseInt(teacher.baseSalary).toLocaleString() : 'N/A'}</span></div></td>
+                <td class="p-4 text-right"><button class="edit-btn bg-gradient-to-r from-blue-500/20 to-blue-600/30 hover:from-blue-500/30 hover:to-blue-600/40 text-blue-400 hover:text-white font-medium py-2 px-4 rounded-lg flex items-center gap-2 transition-all border border-blue-500/30 hover:border-blue-400/50 ml-auto" data-id="${teacher.id}"><i class="fas fa-edit text-xs"></i> Edit</button></td>
+            </tr>
+        `).join('');
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const teacher = allTeachers.find(t => t.id === btn.dataset.id);
+                if (teacher) openTeacherForm(teacher);
+            });
+        });
+    };
+
+    const renderTeacherTableView = () => {
+        const getSortIcon = (key) => {
+            const iconBase = `fas text-xs`;
+            if (state.sortConfig.key !== key) return `${iconBase} fa-sort text-slate-500`;
+            return state.sortConfig.direction === 'asc' ? `${iconBase} fa-chevron-up text-purple-400` : `${iconBase} fa-chevron-down text-purple-400`;
+        };
+        ui.contentArea.innerHTML = `
+        <div class="animate-fade-in">
+            ${createPageHeader(`Department of ${state.selectedDeptName}`, `Manage teachers assigned to this department`, 'departments')}
+            <div class="bg-gradient-to-br from-slate-800/70 to-slate-900/50 p-6 rounded-xl border border-slate-700/50 shadow-xl backdrop-blur-sm">
+                <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                    <div class="relative flex-grow max-w-md"><i class="fas fa-search absolute left-3 top-3 text-slate-500"></i><input type="text" id="teacher-search" class="w-full p-3 pl-10 rounded-xl bg-slate-700/60 border border-slate-600/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent backdrop-blur-sm" placeholder="Search teachers..." value="${state.searchQuery}"></div>
+                    <div class="flex gap-3"><button id="toggle-advanced-search" class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-2.5 px-5 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:shadow-purple-500/20"><i class="fas ${state.advancedSearch.isOpen ? 'fa-times' : 'fa-filter'}"></i> ${state.advancedSearch.isOpen ? 'Hide Filters' : 'Advanced'}</button><button id="bulk-insert-btn" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-2.5 px-5 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:shadow-purple-500/20"><i class="fas fa-file-import"></i> Bulk</button><button id="add-teacher-btn" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:shadow-blue-500/20"><i class="fas fa-user-plus"></i> Add</button></div>
+                </div>
+                ${createAdvancedSearchPanel()}
+                <div id="teacher-count-display" class="text-slate-400 text-sm mt-6"></div>
+                <div class="overflow-x-auto custom-scrollbar rounded-xl border border-slate-700/50 mt-4">
+                    <table class="min-w-full divide-y divide-slate-700/50">
+                        <thead class="bg-slate-700/40 backdrop-blur-sm">
+                            <tr>
+                                <th class="p-4 text-left cursor-pointer hover:bg-slate-700/60 transition-colors sortable-header" data-sort-key="name"><div class="flex items-center gap-2"><span>Name</span><i class="${getSortIcon('name')}"></i></div></th>
+                                <th class="p-4 text-left">Contact</th>
+                                <th class="p-4 text-left cursor-pointer hover:bg-slate-700/60 transition-colors sortable-header" data-sort-key="qualifications"><div class="flex items-center gap-2"><span>Qualifications</span><i class="${getSortIcon('qualifications')}"></i></div></th>
+                                <th class="p-4 text-left cursor-pointer hover:bg-slate-700/60 transition-colors sortable-header" data-sort-key="baseSalary"><div class="flex items-center gap-2"><span>Salary</span><i class="${getSortIcon('baseSalary')}"></i></div></th>
+                                <th class="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacher-table-body" class="divide-y divide-slate-700/30"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`;
+        const handleFilterAndSort = () => {
+            let teachersInDept = allTeachers.filter(t => t.departmentId?.id === state.selectedDeptId);
+            if (state.searchQuery) {
+                const query = state.searchQuery.toLowerCase();
+                teachersInDept = teachersInDept.filter(t => t.name.toLowerCase().includes(query) || (t.email && t.email.toLowerCase().includes(query)));
+            }
+            teachersInDept = applyAdvancedFilters(teachersInDept);
+            teachersInDept.sort((a, b) => {
+                const aValue = a[state.sortConfig.key] || ''; const bValue = b[state.sortConfig.key] || '';
+                if (aValue < bValue) return state.sortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return state.sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+            renderTeacherList(teachersInDept);
+        };
+        handleFilterAndSort();
+        document.querySelector('.back-btn')?.addEventListener('click', () => { state.view = 'departments'; state.searchQuery = ''; mainRender(); });
+        document.getElementById('teacher-search')?.addEventListener('input', debounce((e) => { state.searchQuery = e.target.value; handleFilterAndSort(); }, 300));
+        document.getElementById('add-teacher-btn')?.addEventListener('click', () => openTeacherForm(null));
+        document.getElementById('bulk-insert-btn')?.addEventListener('click', insertDocumentForTeachers);
+        document.getElementById('toggle-advanced-search')?.addEventListener('click', () => { state.advancedSearch.isOpen = !state.advancedSearch.isOpen; renderTeacherTableView(); });
+        document.getElementById('apply-filters-btn')?.addEventListener('click', () => { state.advancedSearch.qualifications = document.getElementById('qualifications-filter').value; state.advancedSearch.minSalary = document.getElementById('min-salary-filter').value; state.advancedSearch.maxSalary = document.getElementById('max-salary-filter').value; state.advancedSearch.hasAddress = document.getElementById('has-address-filter').checked; handleFilterAndSort(); });
+        document.getElementById('reset-filters-btn')?.addEventListener('click', () => { state.advancedSearch = { isOpen: true, qualifications: '', minSalary: '', maxSalary: '', hasAddress: false }; renderTeacherTableView(); });
+        document.querySelectorAll('.sortable-header').forEach(header => { header.addEventListener('click', () => { const key = header.dataset.sortKey; if (state.sortConfig.key === key) { state.sortConfig.direction = state.sortConfig.direction === 'asc' ? 'desc' : 'asc'; } else { state.sortConfig.key = key; state.sortConfig.direction = 'asc'; } handleFilterAndSort(); }); });
+    };
+
+    const openTeacherForm = (teacherData = null) => {
+        const isEditing = !!teacherData;
+        const title = isEditing ? `Edit ${teacherData.name}` : 'Add New Teacher';
+        const formFields = [
+            { name: 'name', label: 'Full Name', type: 'text', required: true },
+            { name: 'email', label: 'Email (will be username)', type: 'email', required: true },
+            { name: 'departmentId', label: 'Primary Department', type: 'select', options: store.get('departments').map(d => `<option value="${d.id}" ${teacherData && teacherData.departmentId?.id === d.id ? 'selected' : ''}>${d.name}</option>`).join(''), required: true },
+            { name: 'contact', label: 'Contact', type: 'tel', required: true },
+            { name: 'address', label: 'Address', type: 'textarea' },
+            { name: 'qualifications', label: 'Qualifications', type: 'text' },
+            { name: 'baseSalary', label: 'Base Salary (BDT)', type: 'number' },
+        ];
+        if (!isEditing) { formFields.push({ name: 'password', label: 'Initial Password', type: 'password', required: true }); }
+        
+        const onSubmit = async (formData) => {
+    if (!isEditing) {
+        formData.departmentId = state.selectedDeptId;
+    }
+
+    try {
+        if (isEditing) {
+            await apiService.update('teachers', teacherData.id, formData);
+            showToast('Teacher updated successfully!', 'success');
+        } else {
+            const newTeacher = await apiService.create('teachers', formData);
+
+            // --- THIS IS THE FIX ---
+            if (!newTeacher || !newTeacher.id) {
+                showToast("Could not create teacher. Please check required fields and network.", "error");
+                return; // Stop execution if teacher creation failed
+            }
+            // --- END OF FIX ---
+
+            await apiService.create('users', {
+                name: newTeacher.name,
+                email: newTeacher.email,
+                password: formData.password,
+                role: 'Teacher',
+                teacherId: newTeacher.id,
+            });
+            showToast('Teacher added successfully!', 'success');
+        }
+
+        await store.refresh('teachers');
+        await store.refresh('users');
+        closeAnimatedModal(ui.modal);
+        mainRender();
+
+    } catch (error) {
+        showToast("Operation failed.", "error");
+        console.error("Form submission error:", error);
+    }
+};
+
+
+        const onDelete = isEditing ? async () => { 
+            showConfirmationModal(`Delete ${teacherData.name}?`, async () => { 
+                if (await apiService.remove('teachers', teacherData.id)) { 
+                    showToast('Teacher deleted.', 'success'); 
+                    closeAnimatedModal(ui.modal); 
+                    await store.refresh('teachers'); 
+                    mainRender(); 
+                } 
+            }); 
+        } : null;
+        
+        openFormModal(title, formFields, onSubmit, teacherData || {}, onDelete);
+    };
+
+    const insertDocumentForTeachers = () => { openBulkInsertModal('teachers', 'Teachers', ['name', 'email', 'password', 'contact', 'departmentName'], { name: "Dr. Jane Smith", email: "jane@school.com", password: "password123", contact: "555-1234", departmentName: "CSE" }); };
+
+    const mainRender = (newState = {}) => {
+        Object.assign(state, newState);
+        switch (state.view) {
+            case 'departments': renderDepartmentView(); break;
+            case 'teachers': renderTeacherTableView(); break;
+            default: renderDepartmentView();
+        }
+    };
+
+    mainRender();
+}
