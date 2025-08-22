@@ -146,7 +146,7 @@ export async function renderFeesPage() {
                             </div>
                             <div class="premium-select">
                                 <svg class="select-icon" viewBox="0 0 24 24">
-                                    <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                                    <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293.707L3.293 7.293A1 1 0 013 6.586V4z"/>
                                 </svg>
                                 <select class="premium-select-input">
                                     <option>All Status</option>
@@ -1842,11 +1842,16 @@ export async function renderFeesPage() {
                 return;
             }
 
+            // --- FIX: Using apiService directly instead of store.create ---
             try {
-                await store.create('fees', feeData);
-                showToast('Fee record added successfully', 'success');
-                modal.remove();
-                render();
+                if (await apiService.create('fees', feeData)) {
+                    await store.refresh('fees');
+                    showToast('Fee record added successfully', 'success');
+                    modal.remove();
+                    render();
+                } else {
+                    throw new Error("API call failed silently.");
+                }
             } catch (error) {
                 showToast('Failed to add fee record', 'error');
                 console.error(error);
@@ -1939,22 +1944,24 @@ export async function renderFeesPage() {
 
         modal.querySelector('.confirm-collect-all').addEventListener('click', async () => {
             const paymentData = {
-                paymentDate: modal.querySelector('#payment-date').value,
+                paidDate: modal.querySelector('#payment-date').value,
                 paymentMethod: modal.querySelector('.payment-method-btn.active span').textContent,
                 collectedBy: currentUser.id
             };
-
+            
+            // --- FIX: Using apiService in a loop ---
             try {
                 const updatePromises = unpaidFees.map(fee => 
-                    store.update('fees', fee.id, {
+                    apiService.update('fees', fee.id, {
                         status: 'Paid',
-                        paidDate: paymentData.paymentDate,
+                        paidDate: paymentData.paidDate,
                         paymentMethod: paymentData.paymentMethod,
                         collectedBy: currentUser
                     })
                 );
                 
                 await Promise.all(updatePromises);
+                await store.refresh('fees');
                 showToast(`Successfully collected ${unpaidFees.length} fees`, 'success');
                 modal.remove();
                 render();
@@ -2044,11 +2051,16 @@ export async function renderFeesPage() {
                 collectedBy: currentUser
             };
 
+            // --- FIX: Using apiService directly ---
             try {
-                await store.update('fees', feeId, paymentData);
-                showToast('Payment recorded successfully', 'success');
-                modal.remove();
-                render();
+                if(await apiService.update('fees', feeId, paymentData)) {
+                    await store.refresh('fees');
+                    showToast('Payment recorded successfully', 'success');
+                    modal.remove();
+                    render();
+                } else {
+                    throw new Error("API call failed silently.");
+                }
             } catch (error) {
                 showToast('Failed to record payment', 'error');
                 console.error(error);
@@ -2240,11 +2252,16 @@ export async function renderFeesPage() {
                 return;
             }
 
+            // --- FIX: Using apiService directly ---
             try {
-                await store.update('fees', feeId, feeData);
-                showToast('Fee record updated successfully', 'success');
-                modal.remove();
-                render();
+                if (await apiService.update('fees', feeId, feeData)) {
+                    await store.refresh('fees');
+                    showToast('Fee record updated successfully', 'success');
+                    modal.remove();
+                    render();
+                } else {
+                     throw new Error("API call failed silently.");
+                }
             } catch (error) {
                 showToast('Failed to update fee record', 'error');
                 console.error(error);
@@ -2256,12 +2273,18 @@ export async function renderFeesPage() {
                 return;
             }
 
+            // --- FIX: Using apiService directly ---
             try {
-                await store.delete('fees', feeId);
-                showToast('Fee record deleted successfully', 'success');
-                modal.remove();
-                render();
-            } catch (error) {
+                if (await apiService.remove('fees', feeId)) {
+                    await store.refresh('fees');
+                    showToast('Fee record deleted successfully', 'success');
+                    modal.remove();
+                    render();
+                } else {
+                    throw new Error("API call failed silently.");
+                }
+            } catch (error)
+            {
                 showToast('Failed to delete fee record', 'error');
                 console.error(error);
             }
@@ -2354,33 +2377,6 @@ export async function renderFeesPage() {
                 </div>`;
         }
         return '<div class="h-64 bg-gray-800/50 rounded-2xl animate-pulse"></div>';
-    };
-
-    const showToast = (message, type = 'success') => {
-        const toast = document.createElement('div');
-        toast.className = `fixed bottom-6 right-6 z-50 px-5 py-3 rounded-lg shadow-2xl backdrop-blur-lg border text-white ${
-            type === 'success' ? 'bg-green-500/30 border-green-500/50' : 
-            type === 'error' ? 'bg-red-500/30 border-red-500/50' : 
-            'bg-blue-500/30 border-blue-500/50'
-        } transition-all duration-300 transform translate-y-12 opacity-0`;
-        toast.innerHTML = `
-            <div class="flex items-center gap-3 font-semibold">
-                <i class="fas ${
-                    type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'
-                }"></i>
-                <span>${message}</span>
-            </div>
-        `;
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.classList.remove('translate-y-12', 'opacity-0');
-        }, 10);
-        
-        setTimeout(() => {
-            toast.classList.add('translate-y-12', 'opacity-0');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
     };
 
     await render();

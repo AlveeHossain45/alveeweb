@@ -19,6 +19,77 @@ export async function renderTeachersPage() {
         }
     };
 
+    // --- START: EVENT DELEGATION SETUP ---
+    // সকল ক্লিকের জন্য একটিমাত্র ইভেন্ট লিসেনার যোগ করা হলো
+    ui.contentArea.onclick = (e) => {
+        const backBtn = e.target.closest('.back-btn');
+        const departmentCard = e.target.closest('.premium-card');
+        const addTeacherBtn = e.target.closest('#add-teacher-btn');
+        const bulkInsertBtn = e.target.closest('#bulk-insert-btn');
+        const toggleAdvancedBtn = e.target.closest('#toggle-advanced-search');
+        const applyFiltersBtn = e.target.closest('#apply-filters-btn');
+        const resetFiltersBtn = e.target.closest('#reset-filters-btn');
+        const sortableHeader = e.target.closest('.sortable-header');
+        const editBtn = e.target.closest('.edit-btn');
+
+        if (backBtn) {
+            state.view = 'departments';
+            state.searchQuery = '';
+            mainRender();
+            return;
+        }
+        if (departmentCard) {
+            state.view = 'teachers';
+            state.selectedDeptId = departmentCard.dataset.id;
+            state.selectedDeptName = departmentCard.dataset.name;
+            mainRender();
+            return;
+        }
+        if (addTeacherBtn) {
+            openTeacherForm(null);
+            return;
+        }
+        if (bulkInsertBtn) {
+            insertDocumentForTeachers();
+            return;
+        }
+        if (toggleAdvancedBtn) {
+            state.advancedSearch.isOpen = !state.advancedSearch.isOpen;
+            mainRender();
+            return;
+        }
+        if (applyFiltersBtn) {
+            state.advancedSearch.qualifications = document.getElementById('qualifications-filter').value;
+            state.advancedSearch.minSalary = document.getElementById('min-salary-filter').value;
+            state.advancedSearch.maxSalary = document.getElementById('max-salary-filter').value;
+            state.advancedSearch.hasAddress = document.getElementById('has-address-filter').checked;
+            handleFilterAndSort(); // শুধু টেবিল রি-রেন্ডার করবে
+            return;
+        }
+        if (resetFiltersBtn) {
+            state.advancedSearch = { isOpen: true, qualifications: '', minSalary: '', maxSalary: '', hasAddress: false };
+            mainRender();
+            return;
+        }
+        if (sortableHeader) {
+            const key = sortableHeader.dataset.sortKey;
+            if (state.sortConfig.key === key) {
+                state.sortConfig.direction = state.sortConfig.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                state.sortConfig.key = key;
+                state.sortConfig.direction = 'asc';
+            }
+            mainRender(); // পুরো টেবিল ভিউ রি-রেন্ডার করবে
+            return;
+        }
+        if (editBtn) {
+            const teacher = allTeachers.find(t => t.id === editBtn.dataset.id);
+            if (teacher) openTeacherForm(teacher);
+            return;
+        }
+    };
+    // --- END: EVENT DELEGATION SETUP ---
+
     ui.contentArea.innerHTML = `
     <div class="h-[70vh] flex flex-col items-center justify-center">
         <div class="relative w-24 h-24 mb-6">
@@ -52,9 +123,9 @@ export async function renderTeachersPage() {
             <div class="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-purple-600/20 to-pink-600/20 rounded-full filter blur-3xl animate-float"></div>
             <div class="absolute -bottom-20 -left-20 w-48 h-48 bg-gradient-to-br from-blue-600/20 to-indigo-600/20 rounded-full filter blur-3xl animate-float" style="animation-delay: 2s;"></div>
             ${backTarget ? `
-            <button data-target="${backTarget}" class="back-btn absolute top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/60 hover:bg-slate-700/80 border border-slate-700/50 transition-all text-slate-300 hover:text-white group">
-                <i class="fas fa-chevron-left text-xs transition-transform group-hover:-translate-x-0.5"></i>
+            <button data-target="${backTarget}" class="back-btn absolute top-6 right-6 flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/60 hover:bg-slate-700/80 border border-slate-700/50 transition-all text-slate-300 hover:text-white group">
                 <span>Back</span>
+                <i class="fas fa-chevron-right text-xs transition-transform group-hover:translate-x-0.5"></i>
             </button>` : ''}
             <div class="relative z-10 text-center">
                 <h2 class="text-3xl font-bold text-white mb-2 bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400">${title}</h2>
@@ -63,7 +134,7 @@ export async function renderTeachersPage() {
         </div>`;
     };
 
-    const createCard = ({ icon, title, count, color, delay, data = {} }) => {
+    const createCard = ({ icon, title, count, delay, data = {} }) => {
         const colors = {
             purple: 'from-purple-500/10 to-indigo-600/20 border-purple-500/20 text-purple-400',
             pink: 'from-pink-500/10 to-rose-600/20 border-pink-500/20 text-pink-400',
@@ -84,11 +155,11 @@ export async function renderTeachersPage() {
                     <h3 class="text-xl font-bold text-white">${title}</h3>
                     <p class="text-xs font-semibold mt-2 text-white/60">${count} ${count === 1 ? 'Teacher' : 'Teachers'}</p>
                 </div>
-                <i class="fas fa-chevron-right text-slate-500 ml-auto transition-transform duration-300 group-hover:translate-x-1 group-hover:text-${selectedColor}-400"></i>
+                <i class="fas fa-chevron-right text-slate-500 ml-auto transition-transform duration-300 group-hover:translate-x-1 group-hover:text-pink-400"></i>
             </div>
         </div>`;
     };
-
+    
     const createAdvancedSearchPanel = () => {
         return `
         <div class="advanced-search-panel mt-6 p-6 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/30 border border-slate-700/50 backdrop-blur-sm transition-all duration-500 overflow-hidden ${state.advancedSearch.isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}">
@@ -133,16 +204,34 @@ export async function renderTeachersPage() {
                 ${deptData.map((dept, i) => createCard({ icon: 'fa-building', title: dept.name, count: dept.teacherCount, delay: i, data: { id: dept.id, name: dept.name } })).join('')}
             </div>
         </div>`;
-        document.querySelectorAll('.premium-card').forEach(card => { card.onclick = () => { state.view = 'teachers'; state.selectedDeptId = card.dataset.id; state.selectedDeptName = card.dataset.name; mainRender(); }; });
     };
 
     const applyAdvancedFilters = (teachers) => {
         let filtered = [...teachers];
-        if (state.advancedSearch.qualifications) { const qualQuery = state.advancedSearch.qualifications.toLowerCase(); filtered = filtered.filter(t => t.qualifications && t.qualifications.toLowerCase().includes(qualQuery)); }
-        if (state.advancedSearch.minSalary) { const minSalary = parseFloat(state.advancedSearch.minSalary); filtered = filtered.filter(t => t.baseSalary && parseFloat(t.baseSalary) >= minSalary); }
-        if (state.advancedSearch.maxSalary) { const maxSalary = parseFloat(state.advancedSearch.maxSalary); filtered = filtered.filter(t => t.baseSalary && parseFloat(t.baseSalary) <= maxSalary); }
-        if (state.advancedSearch.hasAddress) { filtered = filtered.filter(t => t.address && t.address.trim().length > 0); }
+        const { qualifications, minSalary, maxSalary, hasAddress } = state.advancedSearch;
+        if (qualifications) { const q = qualifications.toLowerCase(); filtered = filtered.filter(t => t.qualifications?.toLowerCase().includes(q)); }
+        if (minSalary) { const min = parseFloat(minSalary); filtered = filtered.filter(t => t.baseSalary && parseFloat(t.baseSalary) >= min); }
+        if (maxSalary) { const max = parseFloat(maxSalary); filtered = filtered.filter(t => t.baseSalary && parseFloat(t.baseSalary) <= max); }
+        if (hasAddress) { filtered = filtered.filter(t => t.address?.trim().length > 0); }
         return filtered;
+    };
+
+    const handleFilterAndSort = () => {
+        let teachersInDept = allTeachers.filter(t => t.departmentId?.id === state.selectedDeptId);
+        if (state.searchQuery) {
+            const query = state.searchQuery.toLowerCase();
+            teachersInDept = teachersInDept.filter(t => t.name.toLowerCase().includes(query) || t.email?.toLowerCase().includes(query));
+        }
+        teachersInDept = applyAdvancedFilters(teachersInDept);
+        teachersInDept.sort((a, b) => {
+            const aValue = a[state.sortConfig.key] || ''; const bValue = b[state.sortConfig.key] || '';
+            const direction = state.sortConfig.direction === 'asc' ? 1 : -1;
+            if (typeof aValue === 'string') {
+                return aValue.localeCompare(bValue) * direction;
+            }
+            return (aValue - bValue) * direction;
+        });
+        renderTeacherList(teachersInDept);
     };
 
     const renderTeacherList = (teachersToDisplay) => {
@@ -152,11 +241,13 @@ export async function renderTeachersPage() {
         const totalTeachersInDept = allTeachers.filter(t => t.departmentId?.id === state.selectedDeptId).length;
         if (countDisplay) {
             let countText = `Showing ${teachersToDisplay.length} of ${totalTeachersInDept} teachers`;
-            if (Object.values(state.advancedSearch).some(val => val !== '' && val !== false)) { countText += ' <span class="ml-2 px-2 py-1 bg-purple-500/20 text-purple-300 rounded-full text-xs">Filters Applied</span>'; }
+            if (Object.values(state.advancedSearch).some(val => val && val !== false)) {
+                countText += ' <span class="ml-2 px-2 py-1 bg-purple-500/20 text-purple-300 rounded-full text-xs">Filters Applied</span>';
+            }
             countDisplay.innerHTML = countText;
         }
         if (teachersToDisplay.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8"><div class="flex flex-col items-center justify-center text-slate-400"><i class="fas fa-user-slash text-4xl mb-4 text-purple-500/50"></i><p class="text-lg font-medium">No teachers found</p><p class="text-sm mt-1">${state.searchQuery || Object.values(state.advancedSearch).some(val => val !== '' && val !== false) ? 'Try adjusting your search or filters' : 'No teachers are assigned to this department yet'}</p></div></td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8"><div class="flex flex-col items-center justify-center text-slate-400"><i class="fas fa-user-slash text-4xl mb-4 text-purple-500/50"></i><p class="text-lg font-medium">No teachers found</p><p class="text-sm mt-1">${state.searchQuery || Object.values(state.advancedSearch).some(v => v) ? 'Try adjusting your search or filters' : 'No teachers in this department'}</p></div></td></tr>`;
             return;
         }
         tableBody.innerHTML = teachersToDisplay.map(teacher => `
@@ -168,19 +259,12 @@ export async function renderTeachersPage() {
                 <td class="p-4 text-right"><button class="edit-btn bg-gradient-to-r from-blue-500/20 to-blue-600/30 hover:from-blue-500/30 hover:to-blue-600/40 text-blue-400 hover:text-white font-medium py-2 px-4 rounded-lg flex items-center gap-2 transition-all border border-blue-500/30 hover:border-blue-400/50 ml-auto" data-id="${teacher.id}"><i class="fas fa-edit text-xs"></i> Edit</button></td>
             </tr>
         `).join('');
-        document.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const teacher = allTeachers.find(t => t.id === btn.dataset.id);
-                if (teacher) openTeacherForm(teacher);
-            });
-        });
     };
 
     const renderTeacherTableView = () => {
         const getSortIcon = (key) => {
-            const iconBase = `fas text-xs`;
-            if (state.sortConfig.key !== key) return `${iconBase} fa-sort text-slate-500`;
-            return state.sortConfig.direction === 'asc' ? `${iconBase} fa-chevron-up text-purple-400` : `${iconBase} fa-chevron-down text-purple-400`;
+            if (state.sortConfig.key !== key) return `fas fa-sort text-slate-500 text-xs`;
+            return state.sortConfig.direction === 'asc' ? `fas fa-chevron-up text-purple-400 text-xs` : `fas fa-chevron-down text-purple-400 text-xs`;
         };
         ui.contentArea.innerHTML = `
         <div class="animate-fade-in">
@@ -208,30 +292,11 @@ export async function renderTeachersPage() {
                 </div>
             </div>
         </div>`;
-        const handleFilterAndSort = () => {
-            let teachersInDept = allTeachers.filter(t => t.departmentId?.id === state.selectedDeptId);
-            if (state.searchQuery) {
-                const query = state.searchQuery.toLowerCase();
-                teachersInDept = teachersInDept.filter(t => t.name.toLowerCase().includes(query) || (t.email && t.email.toLowerCase().includes(query)));
-            }
-            teachersInDept = applyAdvancedFilters(teachersInDept);
-            teachersInDept.sort((a, b) => {
-                const aValue = a[state.sortConfig.key] || ''; const bValue = b[state.sortConfig.key] || '';
-                if (aValue < bValue) return state.sortConfig.direction === 'asc' ? -1 : 1;
-                if (aValue > bValue) return state.sortConfig.direction === 'asc' ? 1 : -1;
-                return 0;
-            });
-            renderTeacherList(teachersInDept);
-        };
+        document.getElementById('teacher-search')?.addEventListener('input', debounce((e) => {
+            state.searchQuery = e.target.value;
+            handleFilterAndSort();
+        }, 300));
         handleFilterAndSort();
-        document.querySelector('.back-btn')?.addEventListener('click', () => { state.view = 'departments'; state.searchQuery = ''; mainRender(); });
-        document.getElementById('teacher-search')?.addEventListener('input', debounce((e) => { state.searchQuery = e.target.value; handleFilterAndSort(); }, 300));
-        document.getElementById('add-teacher-btn')?.addEventListener('click', () => openTeacherForm(null));
-        document.getElementById('bulk-insert-btn')?.addEventListener('click', insertDocumentForTeachers);
-        document.getElementById('toggle-advanced-search')?.addEventListener('click', () => { state.advancedSearch.isOpen = !state.advancedSearch.isOpen; renderTeacherTableView(); });
-        document.getElementById('apply-filters-btn')?.addEventListener('click', () => { state.advancedSearch.qualifications = document.getElementById('qualifications-filter').value; state.advancedSearch.minSalary = document.getElementById('min-salary-filter').value; state.advancedSearch.maxSalary = document.getElementById('max-salary-filter').value; state.advancedSearch.hasAddress = document.getElementById('has-address-filter').checked; handleFilterAndSort(); });
-        document.getElementById('reset-filters-btn')?.addEventListener('click', () => { state.advancedSearch = { isOpen: true, qualifications: '', minSalary: '', maxSalary: '', hasAddress: false }; renderTeacherTableView(); });
-        document.querySelectorAll('.sortable-header').forEach(header => { header.addEventListener('click', () => { const key = header.dataset.sortKey; if (state.sortConfig.key === key) { state.sortConfig.direction = state.sortConfig.direction === 'asc' ? 'desc' : 'asc'; } else { state.sortConfig.key = key; state.sortConfig.direction = 'asc'; } handleFilterAndSort(); }); });
     };
 
     const openTeacherForm = (teacherData = null) => {
@@ -247,59 +312,42 @@ export async function renderTeachersPage() {
             { name: 'baseSalary', label: 'Base Salary (BDT)', type: 'number' },
         ];
         if (!isEditing) { formFields.push({ name: 'password', label: 'Initial Password', type: 'password', required: true }); }
-        
+
         const onSubmit = async (formData) => {
-    if (!isEditing) {
-        formData.departmentId = state.selectedDeptId;
-    }
-
-    try {
-        if (isEditing) {
-            await apiService.update('teachers', teacherData.id, formData);
-            showToast('Teacher updated successfully!', 'success');
-        } else {
-            const newTeacher = await apiService.create('teachers', formData);
-
-            // --- THIS IS THE FIX ---
-            if (!newTeacher || !newTeacher.id) {
-                showToast("Could not create teacher. Please check required fields and network.", "error");
-                return; // Stop execution if teacher creation failed
+            if (!isEditing) {
+                formData.departmentId = state.selectedDeptId;
             }
-            // --- END OF FIX ---
+            try {
+                if (isEditing) {
+                    await apiService.update('teachers', teacherData.id, formData);
+                    showToast('Teacher updated successfully!', 'success');
+                } else {
+                    const newTeacher = await apiService.create('teachers', formData);
+                    if (!newTeacher || !newTeacher.id) {
+                        showToast("Could not create teacher.", "error"); return;
+                    }
+                    await apiService.create('users', { name: newTeacher.name, email: newTeacher.email, password: formData.password, role: 'Teacher', teacherId: newTeacher.id });
+                    showToast('Teacher added successfully!', 'success');
+                }
+                await store.refresh('teachers');
+                closeAnimatedModal(ui.modal);
+                mainRender();
+            } catch (error) {
+                showToast("Operation failed.", "error"); console.error("Form submission error:", error);
+            }
+        };
 
-            await apiService.create('users', {
-                name: newTeacher.name,
-                email: newTeacher.email,
-                password: formData.password,
-                role: 'Teacher',
-                teacherId: newTeacher.id,
+        const onDelete = isEditing ? async () => {
+            showConfirmationModal(`Delete ${teacherData.name}?`, async () => {
+                if (await apiService.remove('teachers', teacherData.id)) {
+                    showToast('Teacher deleted.', 'success');
+                    closeAnimatedModal(ui.modal);
+                    await store.refresh('teachers');
+                    mainRender();
+                }
             });
-            showToast('Teacher added successfully!', 'success');
-        }
-
-        await store.refresh('teachers');
-        await store.refresh('users');
-        closeAnimatedModal(ui.modal);
-        mainRender();
-
-    } catch (error) {
-        showToast("Operation failed.", "error");
-        console.error("Form submission error:", error);
-    }
-};
-
-
-        const onDelete = isEditing ? async () => { 
-            showConfirmationModal(`Delete ${teacherData.name}?`, async () => { 
-                if (await apiService.remove('teachers', teacherData.id)) { 
-                    showToast('Teacher deleted.', 'success'); 
-                    closeAnimatedModal(ui.modal); 
-                    await store.refresh('teachers'); 
-                    mainRender(); 
-                } 
-            }); 
         } : null;
-        
+
         openFormModal(title, formFields, onSubmit, teacherData || {}, onDelete);
     };
 
