@@ -112,7 +112,7 @@ export async function openAdvancedMessageModal(replyToUserId = null, replyToUser
         allStaff.forEach(s => groupedOptions['Direct to Staff'].push({ value: s.id, label: `${s.name} (${s.role})` }));
     }
     if (currentUser.role === 'Teacher' && !isReply) { // Only show admin if not a reply
-         groupedOptions['Direct to Staff'].push({ value: 'admin', label: 'Admin' });
+        groupedOptions['Direct to Staff'].push({ value: 'admin', label: 'Admin' });
     }
     if (isReply) {
         groupedOptions['Direct to Student'].push({ value: replyToUserId, label: `${replyToUserName} (Student)` });
@@ -155,7 +155,7 @@ export async function openAdvancedMessageModal(replyToUserId = null, replyToUser
     });
 
     if (isReply) {
-         setTimeout(() => {
+        setTimeout(() => {
             const targetSelect = document.getElementById('target');
             if (targetSelect) targetSelect.disabled = true;
         }, 100);
@@ -671,9 +671,9 @@ export function openChangePasswordModal() {
 
         // Local check using existing apiService (no network)
         const storedPassword = apiService.users[currentUser.username]?.password;
-        if (storedPassword !== undefined && currentPassword !== storedPassword) { 
-            showToast('Incorrect current password.', 'error'); 
-            return; 
+        if (storedPassword !== undefined && currentPassword !== storedPassword) {
+            showToast('Incorrect current password.', 'error');
+            return;
         }
 
         apiService.users[currentUser.username].password = newPassword;
@@ -699,44 +699,54 @@ export function showToast(message, type = 'success') {
     }, 3000);
 }
 
-export function openFormModal(title, formFields, onSubmit, initialData = {}, onDeleteItem = null) {
-    const config = window.currentPageConfig || {};
+// in src/utils/helpers.js
+
+export function openFormModal(title, formFields, onSubmit, initialData = {}, onDeleteItem = null, pageConfig = null) {
+    // This line is the fix. It prioritizes the passed 'pageConfig' over the old global variable.
+    const config = pageConfig || window.currentPageConfig || {};
+    
     const isEditing = Object.keys(initialData).length > 0;
     let newProfileImageData = null;
 
-    // This check determines if the two-column profile view should be used.
     const isProfileModal = ['student', 'teacher', 'staff'].some(keyword => title.toLowerCase().includes(keyword));
-
     let profileActionsHtml = '';
     let formContainerClasses = 'col-span-1';
 
     if (isProfileModal) {
         formContainerClasses = 'md:col-span-2';
-        let avatarSrc, profileName, subtitleHtml, actionButtonsHtml = '';
+        let avatarSrc, profileName, subtitleHtml = '', actionButtonsHtml = '';
 
         if (isEditing) {
             avatarSrc = initialData.profileImage || generateInitialsAvatar(initialData.name);
             profileName = initialData.name;
 
-            // --- START OF MODIFICATION 1: Add specific logic for Staff subtitle ---
             if (config.collectionName === 'students') {
-                subtitleHtml = `<p class="text-slate-400 text-sm">Roll: ${initialData.rollNo || 'N/A'}</p>`;
+                const sectionId = initialData.sectionId?.id || initialData.sectionId;
+                const sectionDetails = store.getMap('sections').get(sectionId);
+                const departmentName = sectionDetails?.subjectId?.departmentId?.name || 'Unassigned';
+                const sectionName = sectionDetails?.name || 'N/A';
+        
+                subtitleHtml = `
+                    <p class="text-slate-400 text-sm">Roll: ${initialData.rollNo || 'N/A'}</p>
+                    <p class="text-slate-400 text-xs mt-1">${departmentName} - Section ${sectionName}</p>
+                `;
             } else if (config.collectionName === 'teachers') {
-                subtitleHtml = `<p class="text-blue-400 font-medium">${initialData.subject || 'Teacher'}</p><p class="text-xs text-slate-500">${initialData.email || 'N/A'}</p>`;
-            } else if (config.collectionName === 'staffs') { // THIS IS THE NEW LOGIC
-                // This displays the job title under the name, matching your desired layout.
+                const departmentId = initialData.departmentId?.id || initialData.departmentId;
+                const departmentDetails = store.getMap('departments').get(departmentId);
+                const departmentName = departmentDetails?.name || 'Unassigned';
+
+                // This is the corrected HTML that will display the details you wanted.
+                subtitleHtml = `
+                    <p class="text-slate-400 text-sm">${initialData.email || 'No email provided'}</p>
+                    <p class="text-slate-400 text-xs mt-1">Department: ${departmentName}</p>
+                `;
+            } else if (config.collectionName === 'staffs') {
                 subtitleHtml = `<p class="text-slate-400">${initialData.jobTitle || 'Staff'}</p>`;
             }
-            // --- END OF MODIFICATION 1 ---
-
+            
             if (onDeleteItem) {
-                // --- START OF MODIFICATION 2: Customize the delete button text ---
                 let deleteButtonText = `Delete ${config.title || 'Item'}`;
-                if (config.collectionName === 'staffs') {
-                    deleteButtonText = 'Delete Staff'; // This provides the exact text from your screenshot.
-                }
-                // --- END OF MODIFICATION 2 ---
-
+                if (config.collectionName === 'staffs') deleteButtonText = 'Delete Staff';
                 actionButtonsHtml = `
                     <div class="space-y-2 pt-4 border-t border-slate-700">
                         <button type="button" id="modal-delete-btn" class="w-full text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-2">
@@ -749,7 +759,7 @@ export function openFormModal(title, formFields, onSubmit, initialData = {}, onD
             profileName = `New ${config.title || 'Profile'}`;
             subtitleHtml = `<p class="text-slate-400 text-sm">Fill in the details to create a profile.</p>`;
         }
-
+        
         profileActionsHtml = `
             <div class="md:col-span-1 space-y-4 text-center p-4 bg-slate-900/50 rounded-lg">
                 <div class="relative group w-24 h-24 mx-auto">
@@ -769,13 +779,12 @@ export function openFormModal(title, formFields, onSubmit, initialData = {}, onD
             </div>
         `;
     }
-
+    
     const createFieldHtml = (field, data) => {
         let value = data[field.name] || field.value || '';
         if (field.type === 'date' && typeof value === 'string' && value.includes('T')) {
             value = value.slice(0, 10);
         }
-
         const idAttribute = field.id ? `id="${field.id}"` : `id="${field.name}"`;
         const labelHtml = `<label for="${field.name}" class="block text-sm font-medium text-slate-300">${field.label}</label>`;
         const inputClasses = "mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -783,9 +792,7 @@ export function openFormModal(title, formFields, onSubmit, initialData = {}, onD
         if (field.type === 'select') return `<div>${labelHtml}<select ${idAttribute} name="${field.name}" ${field.required ? 'required' : ''} ${field.disabled ? 'disabled' : ''} class="${inputClasses}">${field.options}</select></div>`;
         return `<div>${labelHtml}<input type="${field.type}" ${idAttribute} name="${field.name}" value="${value}" ${field.required ? 'required' : ''} placeholder="${field.placeholder || ''}" class="${inputClasses}"></div>`;
     };
-
     const standardFieldsHtml = formFields.map(field => createFieldHtml(field, initialData)).join('');
-
     const formHtml = `
         <form id="modal-form" class="space-y-4">
             <div class="grid grid-cols-1 ${isProfileModal ? 'md:grid-cols-3' : ''} gap-6 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
@@ -799,17 +806,14 @@ export function openFormModal(title, formFields, onSubmit, initialData = {}, onD
             </div>
         </form>
     `;
-
     ui.modalTitle.textContent = title;
     ui.modalBody.innerHTML = formHtml;
-
     formFields.forEach(field => {
         const el = document.getElementById(field.id || field.name);
         if (el && field.type === 'select' && initialData[field.name]) {
             el.value = initialData[field.name];
         }
     });
-
     if (isProfileModal) {
         document.getElementById('modal-image-upload').addEventListener('change', (event) => {
             const file = event.target.files[0];
@@ -822,13 +826,11 @@ export function openFormModal(title, formFields, onSubmit, initialData = {}, onD
                 reader.readAsDataURL(file);
             }
         });
-
         const deleteBtn = document.getElementById('modal-delete-btn');
         if (deleteBtn && onDeleteItem) {
             deleteBtn.onclick = () => onDeleteItem(initialData.id);
         }
     }
-
     document.getElementById('modal-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = Object.fromEntries(new FormData(e.target));
@@ -838,14 +840,12 @@ export function openFormModal(title, formFields, onSubmit, initialData = {}, onD
         await onSubmit(formData);
         closeAnimatedModal(ui.modal);
     });
-
     const modalContent = ui.modal.querySelector('.modal-content');
     if (isProfileModal) {
         modalContent.classList.add('!max-w-4xl');
     } else {
         modalContent.classList.remove('!max-w-4xl');
     }
-
     openAnimatedModal(ui.modal);
     ui.modal.addEventListener('transitionend', () => {
         if (!ui.modal.classList.contains('show')) {
@@ -853,6 +853,8 @@ export function openFormModal(title, formFields, onSubmit, initialData = {}, onD
         }
     }, { once: true });
 }
+
+
 
 export function exportToCsv(filename, headers, rows) {
     const sanitizeCell = (cell) => {

@@ -144,21 +144,35 @@ function renderGenericNoticeList() {
     attachNoticeActionListeners();
 }
 
-
-// --- প্রিমিয়াম নোটিশ কার্ড তৈরির আপডেটেড ফাংশন ---
 export function createPremiumNoticeCard(notice) {
     const allUsersMap = new Map(store.get('users').map(u => [u.id, u]));
     allUsersMap.set(currentUser.id, currentUser);
     const author = allUsersMap.get(notice.authorId) || { name: 'School Admin', profileImage: null, role: 'Admin' };
+    // Define the available reactions and their emojis
+    const reactionEmojis = {
+        like: '👍',
+        heart: '❤️',
+        haha: '😂',
+        crying: '😢'
+    };
+    
+    // Group reactions by type to get counts and tooltips
+    const reactionsByType = (notice.reactions || []).reduce((acc, reaction) => {
+        if (!acc[reaction.type]) {
+            acc[reaction.type] = [];
+        }
+        const user = allUsersMap.get(reaction.userId.toString());
+        if (user) {
+            acc[reaction.type].push(user.name);
+        }
+        return acc;
+    }, {});
 
-    const likes = notice.likes || [];
-    const dislikes = notice.dislikes || [];
-    const isLiked = likes.includes(currentUser.id);
-    const isDisliked = dislikes.includes(currentUser.id);
-    const likerNames = likes.map(id => allUsersMap.get(id)?.name || '...').join(', ');
-    const dislikerNames = dislikes.map(id => allUsersMap.get(id)?.name || '...').join(', ');
+    // Check the current user's reaction
+    const myReaction = (notice.reactions || []).find(r => r.userId.toString() === currentUser.id);
 
-    let cardClasses, ribbonContent;
+    // ... (the ribbon logic remains the same)
+    let ribbonContent;
     if (notice.type === 'private_message') {
         ribbonContent = `<div class="card-ribbon bg-purple-500/20 text-purple-400">Private Message</div>`;
     } else if (notice.target.startsWith('section_')) {
@@ -180,18 +194,25 @@ export function createPremiumNoticeCard(notice) {
         reactionSectionHtml = `
             <div class="flex items-center justify-between mt-5 pt-4 border-t border-slate-700/50">
                 <!-- Reaction Buttons/Display -->
-                <div class="flex items-center gap-3">
-                    ${currentUser.role === 'Student' ? `
-                        <button class="reaction-btn like-btn ${isLiked ? 'active-like' : ''}" data-id="${notice.id}" data-type="like">
-                            <i class="${isLiked ? 'fas' : 'far'} fa-thumbs-up"></i><span>${likes.length}</span>
+                <div class="flex items-center gap-2">
+                    ${Object.entries(reactionEmojis).map(([type, emoji]) => {
+                        const reactors = reactionsByType[type] || [];
+                        const count = reactors.length;
+                        const isActive = myReaction?.type === type;
+                        const tooltip = count > 0 ? `Reacted by: ${reactors.join(', ')}` : `React with ${type}`;
+                        
+                        return `
+                        <button 
+                            class="reaction-btn ${isActive ? 'active' : ''}" 
+                            data-id="${notice.id}" 
+                            data-type="${type}"
+                            title="${tooltip}"
+                        >
+                            <span class="text-lg">${emoji}</span>
+                            <span class="font-semibold text-sm">${count}</span>
                         </button>
-                        <button class="reaction-btn dislike-btn ${isDisliked ? 'active-dislike' : ''}" data-id="${notice.id}" data-type="dislike">
-                            <i class="${isDisliked ? 'fas' : 'far'} fa-thumbs-down"></i><span>${dislikes.length}</span>
-                        </button>
-                    ` : `
-                        <div class="reaction-display" title="Liked by: ${likerNames || 'None'}"><i class="fas fa-thumbs-up text-blue-400/80"></i> ${likes.length}</div>
-                        <div class="reaction-display" title="Disliked by: ${dislikerNames || 'None'}"><i class="fas fa-thumbs-down text-red-400/80"></i> ${dislikes.length}</div>
-                    `}
+                        `;
+                    }).join('')}
                 </div>
                 
                 <!-- Author Info -->
@@ -202,7 +223,30 @@ export function createPremiumNoticeCard(notice) {
                     </div>
                     <img src="${author.profileImage || generateInitialsAvatar(author.name)}" alt="${author.name}" class="w-9 h-9 rounded-full object-cover">
                 </div>
-            </div>`;
+            </div>
+            <style>
+                .reaction-btn {
+                    padding: 6px 12px;
+                    border-radius: 20px;
+                    background-color: rgba(71, 85, 105, 0.4);
+                    border: 1px solid transparent;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    transition: all 0.2s ease-in-out;
+                    color: #d1d5db;
+                }
+                .reaction-btn:hover {
+                    background-color: rgba(71, 85, 105, 0.7);
+                    border-color: rgba(147, 197, 253, 0.4);
+                }
+                .reaction-btn.active {
+                    background-color: rgba(99, 102, 241, 0.3);
+                    border-color: rgba(129, 140, 248, 1);
+                    color: white;
+                }
+            </style>
+        `;
     }
 
     return `
@@ -220,11 +264,14 @@ export function createPremiumNoticeCard(notice) {
     </div>`;
 }
 
-// --- ইভেন্ট লিসেনার ফাংশন (আপডেটেড) ---
+// --- THIS IS THE UPDATED EVENT LISTENER FUNCTION ---
 export function attachNoticeActionListeners() {
     document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.onclick = () => showConfirmationModal('Are you sure?', async () => {
-            if(await apiService.remove('notices', btn.dataset.id)){ renderNoticesPage(); }
+        btn.onclick = () => showConfirmationModal('Are you sure you want to delete this notice?', async () => {
+            if (await apiService.remove('notices', btn.dataset.id)) {
+                showToast('Notice removed.', 'success');
+                renderNoticesPage();
+            }
         });
     });
 
@@ -232,19 +279,19 @@ export function attachNoticeActionListeners() {
         const button = event.currentTarget;
         const noticeId = button.dataset.id;
         const reactionType = button.dataset.type;
+
+        button.disabled = true;
         
-        button.disabled = true; // Prevent double clicks
         const updatedNotice = await apiService.reactToNotice(noticeId, reactionType);
-        
+
         if (updatedNotice) {
             await store.refresh('notices');
             renderNoticesPage();
         } else {
-            showToast('Action failed.', 'error');
+            showToast('Action failed. Please try again.', 'error');
             button.disabled = false;
         }
     };
-
     document.querySelectorAll('.reaction-btn').forEach(btn => {
         btn.onclick = handleReaction;
     });

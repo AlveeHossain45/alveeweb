@@ -6,6 +6,7 @@ import { currentUser, ui } from "../ui.js";
 import {
     closeAnimatedModal,
     debounce,
+    generateInitialsAvatar, // Add this line
     openBulkInsertModal,
     openFormModal,
     showConfirmationModal,
@@ -200,7 +201,7 @@ export async function renderStudentsPage() {
         </div>`;
     };
 
-    
+
     // --- Department View ---
     const renderDepartmentGrid = (departmentsToRender) => {
         const grid = document.getElementById("department-grid");
@@ -222,15 +223,15 @@ export async function renderStudentsPage() {
 
     const renderDepartmentView = () => {
         ui.contentArea.innerHTML = `<div>${createPageHeader("Departments", "Select a department to view sections")}${renderPremiumSearchBar("Search departments...", state.searchQuery)}<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5" id="department-grid"></div></div>`;
-        
+
         const updateList = () => {
-            let departmentsToRender = accessibleDepartments.map(dept => ({...dept, studentCount: allStudents.filter(s => idsEqual(s.sectionId?.subjectId?.departmentId?.id, dept.id)).length}));
+            let departmentsToRender = accessibleDepartments.map(dept => ({ ...dept, studentCount: allStudents.filter(s => idsEqual(s.sectionId?.subjectId?.departmentId?.id, dept.id)).length }));
             if (state.searchQuery) {
                 departmentsToRender = departmentsToRender.filter(d => d.name.toLowerCase().includes(state.searchQuery.toLowerCase()));
             }
             renderDepartmentGrid(departmentsToRender);
         };
-        
+
         updateList(); // Initial render
 
         document.getElementById("search-input")?.addEventListener("input", debounce((e) => { state.searchQuery = e.target.value; updateList(); }, 300));
@@ -260,16 +261,16 @@ export async function renderStudentsPage() {
 
     const renderSectionView = () => {
         ui.contentArea.innerHTML = `<div>${createPageHeader(`Department of ${state.selectedDeptName}`, "Select a section to view students", "departments")}${renderPremiumSearchBar("Search sections...", state.searchQuery)}<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5" id="section-grid"></div></div>`;
-        
+
         const updateList = () => {
-            let sectionsToRender = accessibleSections.filter(s => idsEqual(s.subjectId?.departmentId?.id, state.selectedDeptId)).map(section => ({...section, studentCount: allStudents.filter(s => idsEqual(s.sectionId?.id, section.id)).length}));
+            let sectionsToRender = accessibleSections.filter(s => idsEqual(s.subjectId?.departmentId?.id, state.selectedDeptId)).map(section => ({ ...section, studentCount: allStudents.filter(s => idsEqual(s.sectionId?.id, section.id)).length }));
             if (state.searchQuery) {
                 const q = state.searchQuery.toLowerCase();
                 sectionsToRender = sectionsToRender.filter(s => s.name.toLowerCase().includes(q) || s.subjectId.name.toLowerCase().includes(q));
             }
             renderSectionGrid(sectionsToRender);
         };
-        
+
         updateList(); // Initial render
 
         document.querySelector(".back-btn")?.addEventListener("click", () => { state.view = "departments"; state.searchQuery = ""; mainRender(); });
@@ -365,9 +366,9 @@ export async function renderStudentsPage() {
                 <tr>
                     <td colspan="6" class="text-center py-12">
                         ${createEmptyState(
-                            state.searchQuery || hasActiveFilters ? "No Students Found" : "This Section is Empty", 
-                            state.searchQuery || hasActiveFilters ? "Your search did not match any students." : "Add a new student to get started."
-                        )}
+                state.searchQuery || hasActiveFilters ? "No Students Found" : "This Section is Empty",
+                state.searchQuery || hasActiveFilters ? "Your search did not match any students." : "Add a new student to get started."
+            )}
                     </td>
                 </tr>`;
             updateSelectAllHeader();
@@ -376,24 +377,25 @@ export async function renderStudentsPage() {
 
         tableBody.innerHTML = studentsToDisplay.map((student, index) => {
             const hue = Math.abs(student.name.split('').reduce((a, ch) => (a << 5) - a + ch.charCodeAt(0), 0) % 360);
-            const rowColors = index % 2 === 0 
-                ? "bg-slate-800/20 hover:bg-indigo-900/30" 
+            const rowColors = index % 2 === 0
+                ? "bg-slate-800/20 hover:bg-indigo-900/30"
                 : "bg-slate-900/40 hover:bg-indigo-900/30";
-            
+
             return `
                 <tr class="border-b border-indigo-700/30 transition-all ${rowColors}">
                     ${state.isSelectionMode ? `
                     <td class="p-4">
                         <input type="checkbox" class="student-checkbox w-4 h-4 rounded bg-slate-800/60 border-indigo-600/30 accent-purple-500" data-id="${student.id}" ${state.selectedIds.has(String(student.id)) ? "checked" : ""}>
                     </td>` : ""}
-                    <td class="p-4 font-medium text-white">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mr-3 shadow-md" style="background: linear-gradient(135deg, hsl(${hue}, 70%, 45%), hsl(${hue}, 70%, 35%))">
-                                ${student.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                            </div>
-                            <span>${student.name}</span>
-                        </div>
-                    </td>
+                  <td class="p-4">
+    <div class="flex items-center gap-3">
+        <img src="${student.profileImage || generateInitialsAvatar(student.name)}" alt="${student.name}" class="w-10 h-10 rounded-full object-cover">
+        <div>
+            <p class="font-semibold text-white">${student.name || 'N/A'}</p>
+            <a href="mailto:${student.email}" class="text-xs text-slate-400 hover:text-blue-400 transition-colors">${student.email || 'N/A'}</a>
+        </div>
+    </div>
+</td>
                     <td class="p-4"><span class="px-2 py-1 bg-indigo-900/30 rounded-lg text-indigo-200">${student.rollNo}</span></td>
                     <td class="p-4">${student.guardianName || ""}</td>
                     <td class="p-4">${student.contact || ""}</td>
@@ -582,83 +584,113 @@ export async function renderStudentsPage() {
         });
     };
 
-    // --- Student Form ---
-    const openStudentForm = (studentData = null) => {
-        const isEditing = !!studentData;
-        const title = isEditing ? `Edit ${studentData.name}` : "Add New Student";
+   // in src/pages/students.js
 
-        const formFields = [
-            { name: "name", label: "Full Name", type: "text", required: true },
-            { name: "email", label: "Email", type: "email", required: true },
-            { name: "rollNo", label: "Roll Number", type: "text", required: true },
-            { name: "guardianName", label: "Guardian Name", type: "text", required: true },
-            { name: "contact", label: "Contact Number", type: "tel", required: true },
-            { name: "dateOfBirth", label: "Date of Birth", type: "date" },
-            { name: "gender", label: "Gender", type: "select", options: `<option>Male</option><option>Female</option><option>Other</option>` },
-            { name: "address", label: "Address", type: "textarea" },
-        ];
+// ... (keep all the existing code at the top of the file)
 
-        if (!isEditing) {
-            formFields.push({ name: "password", label: "Initial Password", type: "password", required: true });
-        }
+// --- THIS IS THE FUNCTION TO MODIFY ---
+const openStudentForm = (studentData = null) => {
+    const isEditing = !!studentData;
+    const title = isEditing ? `Edit Student Profile` : "Add New Student";
 
-     const onSubmitHandler = async (formData) => {
-    try {
-        formData.sectionId = state.selectedSectionId;
-
-        if (isEditing) {
-            await apiService.update("students", studentData.id, formData);
-            showToast("Student updated successfully!", "success");
-        } else {
-            const newStudent = await apiService.create("students", formData);
-
-            // --- THIS IS THE FIX ---
-            // It checks if student creation was successful before proceeding.
-            if (!newStudent || !newStudent.id) {
-                showToast("Could not create student. Please check required fields and network.", "error");
-                return; // Stop execution if student creation failed
-            }
-            // --- END OF FIX ---
-
-            await apiService.create("users", {
-                name: newStudent.name,
-                email: newStudent.email,
-                password: formData.password,
-                role: "Student",
-                studentId: newStudent.id,
-            });
-            showToast("Student added successfully!", "success");
-        }
-        await store.refresh("students");
-        closeAnimatedModal(ui.modal);
-        renderStudentTableView();
-    } catch (error) {
-        showToast("Operation failed.", "error");
-        console.error("Form submission error:", error);
+    // ... (keep the logic for building formFields exactly as it is)
+    const allDepartments = store.get("departments");
+    const allSections = store.get("sections");
+    let currentSectionId = studentData?.sectionId?.id || studentData?.sectionId;
+    const currentSection = allSections.find(s => s.id === currentSectionId);
+    let currentDeptId = currentSection?.subjectId?.departmentId?.id;
+    const departmentOptionsHtml = allDepartments.map(dept =>
+        `<option value="${dept.id}" ${dept.id === currentDeptId ? 'selected' : ''}>${dept.name}</option>`
+    ).join('');
+    const sectionOptionsHtml = allSections
+        .filter(section => section.subjectId?.departmentId?.id === currentDeptId)
+        .map(section =>
+            `<option value="${section.id}" ${section.id === currentSectionId ? 'selected' : ''}>
+            ${section.subjectId.name} - Section ${section.name}
+        </option>`
+        ).join('');
+    const formFields = [
+        { name: "name", label: "Full Name", type: "text", required: true },
+        { name: "email", label: "Email", type: "email", required: true },
+        { name: "rollNo", label: "Roll Number", type: "text", required: true },
+        { name: "guardianName", label: "Guardian Name", type: "text", required: true },
+        { name: 'department', label: 'Department', type: 'select', id: 'department-selector', options: departmentOptionsHtml },
+        { name: 'sectionId', label: 'Section', type: 'select', id: 'sectionId', options: sectionOptionsHtml, required: true },
+        { name: "contact", label: "Contact Number", type: "tel", required: true },
+        { name: "dateOfBirth", label: "Date of Birth", type: "date" },
+        { name: "gender", label: "Gender", type: "select", options: `<option>Male</option><option>Female</option><option>Other</option>` },
+        { name: "address", label: "Address", type: "textarea" },
+    ];
+     if (!isEditing) {
+        formFields.push({ name: "password", label: "Initial Password", type: "password", required: true });
     }
+    // ... (keep the onSubmitHandler and onDeleteHandler logic as is)
+    const onSubmitHandler = async (formData) => {
+        delete formData.department;
+        try {
+            if (isEditing) {
+                await apiService.update("students", studentData.id, formData);
+                showToast("Student updated successfully!", "success");
+            } else {
+                const newStudent = await apiService.create("students", formData);
+                if (!newStudent || !newStudent.id) {
+                    showToast("Could not create student.", "error");
+                    return;
+                }
+                await apiService.create("users", {
+                    name: newStudent.name, email: newStudent.email, password: formData.password,
+                    role: "Student", studentId: newStudent.id,
+                });
+                showToast("Student added successfully!", "success");
+            }
+            await store.refresh("students");
+            closeAnimatedModal(ui.modal);
+            mainRender(); 
+        } catch (error) {
+            showToast("Operation failed.", "error");
+            console.error("Form submission error:", error);
+        }
+    };
+    const onDeleteHandler = isEditing
+        ? async () => {
+            showConfirmationModal(`Delete ${studentData.name}? This will also delete their user account.`, async () => {
+                try {
+                    await apiService.remove("students", studentData.id);
+                    showToast("Student deleted successfully", "success");
+                    closeAnimatedModal(ui.modal);
+                    await store.refresh("students");
+                    renderStudentTableView();
+                } catch (error) {
+                    console.error(error);
+                    showToast("Failed to delete student", "error");
+                }
+            });
+        }
+        : null;
+
+    // --- THIS IS THE FIX ---
+    // We create and pass a config object so the modal knows it's for a 'student'.
+    const modalConfig = { collectionName: 'students', title: 'Student' };
+    openFormModal(title, formFields, onSubmitHandler, studentData || {}, onDeleteHandler, modalConfig);
+    // -------------------------
+
+    // ... (keep the setTimeout for event listeners exactly as it is)
+    setTimeout(() => {
+        const departmentSelect = document.getElementById('department-selector');
+        const sectionSelect = document.getElementById('sectionId');
+        if (departmentSelect && sectionSelect) {
+            departmentSelect.addEventListener('change', (e) => {
+                const selectedDeptId = e.target.value;
+                const relevantSections = allSections.filter(section => section.subjectId?.departmentId?.id === selectedDeptId);
+                sectionSelect.innerHTML = relevantSections.map(section =>
+                    `<option value="${section.id}">${section.subjectId.name} - Section ${section.name}</option>`
+                ).join('');
+            });
+        }
+    }, 100);
 };
 
-
-        const onDeleteHandler = isEditing
-            ? async () => {
-                showConfirmationModal(`Delete ${studentData.name}? This will also delete their user account.`, async () => {
-                    try {
-                        await apiService.remove("students", studentData.id);
-                        showToast("Student deleted successfully", "success");
-                        closeAnimatedModal(ui.modal);
-                        await store.refresh("students");
-                        renderStudentTableView();
-                    } catch (error) {
-                        console.error(error);
-                        showToast("Failed to delete student", "error");
-                    }
-                });
-            }
-            : null;
-
-        openFormModal(title, formFields, onSubmitHandler, studentData || {}, onDeleteHandler);
-    };
-
+// ... (keep all other functions in the file, like mainRender, etc.)
     // --- Bulk Insert Function ---
     const insertDocument = () => {
         openBulkInsertModal(

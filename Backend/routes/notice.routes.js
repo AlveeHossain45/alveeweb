@@ -1,11 +1,15 @@
 // routes/notice.routes.js
 const express = require('express');
 const router = express.Router();
-const { getNotices, createNotice, deleteNotice } = require('../controllers/noticeController');
+const { getNotices, createNotice, deleteNotice, reactToNotice } = require('../controllers/noticeController');
 
 router.route('/')
     .get(getNotices)
     .post(createNotice);
+
+// --- THIS IS THE NEW ROUTE FOR REACTIONS ---
+router.route('/:noticeId/react')
+    .post(reactToNotice);
 
 router.route('/:id')
     .delete(deleteNotice);

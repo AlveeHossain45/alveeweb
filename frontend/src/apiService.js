@@ -1,6 +1,8 @@
 // in frontend/src/apiService.js
 
 import { showToast } from './utils/helpers.js';
+import { currentUser } from './ui.js'; // <-- ADD THIS IMPORT
+
 
 export const apiService = (() => {
     // The base URL for the API.
@@ -152,7 +154,26 @@ export const apiService = (() => {
             return undefined;
         }
     };
-
+    
+    const reactToNotice = async (noticeId, reactionType) => {
+        const url = `${API_BASE_URL}/notices/${noticeId}/react`;
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUser.id, // The ID of the currently logged-in user
+                    reactionType: reactionType // 'like' or 'dislike'
+                }),
+            });
+            if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+            return await response.json();
+        } catch (error) {
+            console.error(`Failed to react to notice ${noticeId}:`, error);
+            showToast('Error: Could not process your reaction.', 'error');
+            return null;
+        }
+    };
     
     const getResultsForExam = (examId) => Promise.resolve([]);
     const saveResults = (examId, resultsData) => Promise.resolve({ success: true });
@@ -199,8 +220,9 @@ export const apiService = (() => {
 
 
     return {
-        init, save, get, create, bulkCreate, bulkRemove,getAttendanceReport,
+        init, save, get, create, bulkCreate, bulkRemove, getAttendanceReport,
         update, remove, getAttendance, saveAttendance,
-        getResultsForExam, saveResults, reset, processSalaries 
+        getResultsForExam, saveResults, reset, processSalaries,
+        reactToNotice // <-- EXPORT THE NEW FUNCTION
     };
 })();

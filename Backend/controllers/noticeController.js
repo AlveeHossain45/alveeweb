@@ -71,9 +71,48 @@ const deleteNotice = asyncHandler(async (req, res) => {
     }
 });
 
+// --- THIS IS THE UPGRADED REACTION FUNCTION ---
+const reactToNotice = asyncHandler(async (req, res) => {
+    const { noticeId } = req.params;
+    const { userId, reactionType } = req.body;
+
+    if (!userId || !reactionType) {
+        return res.status(400).json({ message: 'User ID and reaction type are required.' });
+    }
+
+    const notice = await Notice.findById(noticeId);
+    if (!notice) {
+        return res.status(404).json({ message: 'Notice not found.' });
+    }
+
+    // Find if the user has already reacted
+    const existingReactionIndex = notice.reactions.findIndex(r => r.userId.toString() === userId);
+
+    if (existingReactionIndex > -1) {
+        // User has reacted before
+        const existingReaction = notice.reactions[existingReactionIndex];
+        
+        if (existingReaction.type === reactionType) {
+            // User is clicking the same reaction again, so we remove it (toggle off)
+            notice.reactions.splice(existingReactionIndex, 1);
+        } else {
+            // User is changing their reaction
+            existingReaction.type = reactionType;
+        }
+    } else {
+        // User is reacting for the first time
+        notice.reactions.push({ userId, type: reactionType });
+    }
+
+    const updatedNotice = await notice.save();
+    res.json(updatedNotice);
+});
+
 module.exports = {
     getNotices,
     createNotice,
-    updateNotice,
+    updateNotice, // Keep this if you use it
     deleteNotice,
+    reactToNotice // Ensure this is exported
 };
+
