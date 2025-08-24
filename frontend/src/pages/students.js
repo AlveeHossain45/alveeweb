@@ -6,7 +6,7 @@ import { currentUser, ui } from "../ui.js";
 import {
     closeAnimatedModal,
     debounce,
-    generateInitialsAvatar, // Add this line
+    generateInitialsAvatar,
     openBulkInsertModal,
     openFormModal,
     showConfirmationModal,
@@ -588,12 +588,10 @@ export async function renderStudentsPage() {
 
 // ... (keep all the existing code at the top of the file)
 
-// --- THIS IS THE FUNCTION TO MODIFY ---
 const openStudentForm = (studentData = null) => {
     const isEditing = !!studentData;
     const title = isEditing ? `Edit Student Profile` : "Add New Student";
 
-    // ... (keep the logic for building formFields exactly as it is)
     const allDepartments = store.get("departments");
     const allSections = store.get("sections");
     let currentSectionId = studentData?.sectionId?.id || studentData?.sectionId;
@@ -624,7 +622,8 @@ const openStudentForm = (studentData = null) => {
      if (!isEditing) {
         formFields.push({ name: "password", label: "Initial Password", type: "password", required: true });
     }
-    // ... (keep the onSubmitHandler and onDeleteHandler logic as is)
+    
+    // --- THIS IS THE CORRECTED PART ---
     const onSubmitHandler = async (formData) => {
         delete formData.department;
         try {
@@ -643,24 +642,31 @@ const openStudentForm = (studentData = null) => {
                 });
                 showToast("Student added successfully!", "success");
             }
-            await store.refresh("students");
+            
+            // Correct sequence: Close modal, then refresh data, then render the view
             closeAnimatedModal(ui.modal);
-            mainRender(); 
+            await store.refresh("students");
+            renderStudentTableView(); // Explicitly re-render the student table view
+
         } catch (error) {
             showToast("Operation failed.", "error");
             console.error("Form submission error:", error);
         }
     };
+    // ------------------------------------
+
     const onDeleteHandler = isEditing
         ? async () => {
             showConfirmationModal(`Delete ${studentData.name}? This will also delete their user account.`, async () => {
                 try {
+                    // Correct sequence is already here, we match it above
                     await apiService.remove("students", studentData.id);
                     showToast("Student deleted successfully", "success");
                     closeAnimatedModal(ui.modal);
                     await store.refresh("students");
                     renderStudentTableView();
-                } catch (error) {
+                } catch (error)
+                 {
                     console.error(error);
                     showToast("Failed to delete student", "error");
                 }
@@ -668,13 +674,9 @@ const openStudentForm = (studentData = null) => {
         }
         : null;
 
-    // --- THIS IS THE FIX ---
-    // We create and pass a config object so the modal knows it's for a 'student'.
     const modalConfig = { collectionName: 'students', title: 'Student' };
     openFormModal(title, formFields, onSubmitHandler, studentData || {}, onDeleteHandler, modalConfig);
-    // -------------------------
 
-    // ... (keep the setTimeout for event listeners exactly as it is)
     setTimeout(() => {
         const departmentSelect = document.getElementById('department-selector');
         const sectionSelect = document.getElementById('sectionId');
