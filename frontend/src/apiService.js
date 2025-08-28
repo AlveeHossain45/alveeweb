@@ -6,7 +6,7 @@ import { currentUser } from './ui.js'; // <-- ADD THIS IMPORT
 
 export const apiService = (() => {
     // The base URL for the API.
-    const API_BASE_URL = 'https://alveeweb.vercel.app';
+    const API_BASE_URL = 'https://edusysv1.vercel.app';
     // This Set correctly identifies which collections need the special /financial prefix.
     const financialCollections = new Set(['fees', 'salaries', 'expenses']);
     // This function is the key. It checks the collection name and adds the prefix if needed.
@@ -104,24 +104,27 @@ export const apiService = (() => {
     };
 
 
-    const update = async (collection, id, data, subCollection = null) => {
-        const baseUrl = getBaseUrlForCollection(collection);
-        const url = subCollection ? `${baseUrl}/${subCollection}/${id}` : `${baseUrl}/${id}`;
-        
-        try {
-            const response = await fetch(url, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
-            return mapId(await response.json());
-        } catch (error) {
-            console.error(`Failed to UPDATE in ${collection}:`, error);
-            showToast('Error: Could not update the item.', 'error');
-            return undefined;
-        }
-    };
+const update = async (collection, id, data, subCollection = null) => {
+    const baseUrl = getBaseUrlForCollection(collection);
+    const url = subCollection ? `${baseUrl}/${subCollection}/${id}` : `${baseUrl}/${id}`;    
+    try {       
+        const isFormData = data instanceof FormData;
+      // 2. We construct the options for our fetch request.
+        const fetchOptions = {
+            method: 'PUT',
+          
+            headers: isFormData ? {} : { 'Content-Type': 'application/json' },
+            body: isFormData ? data : JSON.stringify(data),
+        };
+        const response = await fetch(url, fetchOptions);
+        if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+        return mapId(await response.json());
+    } catch (error) {
+        console.error(`Failed to UPDATE in ${collection}:`, error);
+        showToast('Error: Could not update the item.', 'error');
+        return undefined;
+    }
+};
 
     const remove = async (collection, id, subCollection = null) => {
         const baseUrl = getBaseUrlForCollection(collection);
@@ -155,7 +158,7 @@ export const apiService = (() => {
         }
     };
     
-    const reactToNotice = async (noticeId, reactionType) => {
+      const reactToNotice = async (noticeId, reactionType) => {
         const url = `${API_BASE_URL}/notices/${noticeId}/react`;
         try {
             const response = await fetch(url, {
@@ -163,7 +166,7 @@ export const apiService = (() => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: currentUser.id, // The ID of the currently logged-in user
-                    reactionType: reactionType // 'like' or 'dislike'
+                    reactionType: reactionType // e.g., 'like' or 'heart'
                 }),
             });
             if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
@@ -174,6 +177,7 @@ export const apiService = (() => {
             return null;
         }
     };
+
     
     const getResultsForExam = (examId) => Promise.resolve([]);
     const saveResults = (examId, resultsData) => Promise.resolve({ success: true });

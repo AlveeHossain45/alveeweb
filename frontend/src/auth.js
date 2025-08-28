@@ -2,10 +2,9 @@
 
 import { ui, currentUser, setCurrentUser } from './ui.js';
 import { showConfirmationModal } from './utils/helpers.js';
-import { initializeApp } from './main.js'; // <-- CORRECT: Import from main
+import { initializeApp } from './main.js';
 
-// The API base URL to use for the login request.
-const API_BASE_URL = 'https://alveeweb.vercel.app';
+const API_BASE_URL = 'https://edusysv1.vercel.app';
 
 /**
  * Hides the main app UI and shows the login page.
@@ -15,59 +14,71 @@ export function showLoginPage() {
     ui.app.classList.add('hidden');
 }
 
-/**
- * Handles the login form submission. It uses the Fetch API to send
- * the username and password to the server.
- * @param {Event} e - The form submission event.
- */
+
 export async function handleLogin(e) {
     e.preventDefault();
     const username = e.target.username.value.trim();
     const password = e.target.password.value;
     ui.loginMessage.textContent = ''; // Clear any previous error messages
 
+    const loginFormContainer = document.getElementById('login-form-container');
+    const loginSuccessMessage = document.getElementById('login-success-message');
+    const successUsername = document.getElementById('success-username');
+    
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Signing In...`;
+    }
+
     try {
         const response = await fetch(`${API_BASE_URL}/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password, portal: selectedPortal })
         });
 
-        // First, check if the response is okay at a network level
-        if (!response.ok) {
-            // This will show "Server error: 500" for a crash or a network issue.
-            ui.loginMessage.textContent = `Server error: ${response.status}`;
-            console.error("Server responded with an error:", response);
-            return;
-        }
-
-        // Get the raw text of the response
-        const responseText = await response.text();
         
-        // Try to parse it, and handle the case where the response body is empty.
+        const responseText = await response.text();
         const result = responseText ? JSON.parse(responseText) : {};
 
+       
         if (result.success) {
-            // Set the current user globally and in session storage.
+            // --- SUCCESS PATH (No changes here) ---
             setCurrentUser(result.user);
             sessionStorage.setItem('sms_user_pro', JSON.stringify(result.user));
-            // Initialize the main application after successful login.
-            initializeApp();
+
+            if (loginFormContainer) loginFormContainer.classList.add('hidden');
+            if (loginSuccessMessage && successUsername) {
+                successUsername.textContent = result.user.name || result.user.username;
+                loginSuccessMessage.classList.remove('hidden');
+            }
+
+            setTimeout(() => {
+                initializeApp();
+            }, 2000); 
+
         } else {
-            // Display a specific error message from the server or a default one.
-            ui.loginMessage.textContent = result.message || 'Invalid username or password.';
+           
+            ui.loginMessage.textContent = result.message || `Server error: ${response.status}`;
+            
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.innerHTML = 'Sign In';
+            }
         }
     } catch (error) {
-        // Handle any network-related errors, such as the server being down.
+        // --- CATCH BLOCK (For network errors, etc.) ---
         console.error("Login request failed:", error);
         ui.loginMessage.textContent = 'A critical error occurred. Check the console.';
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Sign In';
+        }
     }
 }
 
-/**
- * Handles the logout process. It shows a confirmation modal before
- * clearing user data from the session and reloading the page.
- */
+
 export function handleLogout() {
     showConfirmationModal("Are you sure you want to log out?", () => {
         // --- CRITICAL FIX ---

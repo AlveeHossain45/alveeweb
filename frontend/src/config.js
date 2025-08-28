@@ -4,7 +4,7 @@ export const navConfig = {
         { icon: 'fa-tachometer-alt', text: 'Dashboard', page: 'dashboard' },
         { icon: 'fa-user-graduate', text: 'Students', page: 'students' },
         { icon: 'fa-chalkboard-teacher', text: 'Teachers', page: 'teachers' },
-        { icon: 'fa-users',text: 'Staff & Colleagues',page: 'staff' },
+        { icon: 'fa-users-cog', text: 'Staff Management', page: 'staff' },
         { icon: 'fa-sitemap', text: 'Academic Structure', page: 'academicStructure' },
         { icon: 'fa-calendar-alt', text: 'Timetable', page: 'timetable' },
         { icon: 'fa-file-export', text: 'Financial Reports', page: 'financialReports' },

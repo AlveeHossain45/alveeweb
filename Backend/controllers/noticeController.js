@@ -5,8 +5,6 @@ const Notice = require('../models/notice.model.js');
 // @route   GET /notices
 // @access  Private
 const getNotices = asyncHandler(async (req, res) => {
-    // --- THIS IS THE FIX ---
-    // Use .find() to get all documents, not .findOne() which only gets the first one.
     const notices = await Notice.find({}).sort({ date: -1 });
     res.json(notices);
 });
@@ -14,11 +12,8 @@ const getNotices = asyncHandler(async (req, res) => {
 
 // @desc    Create a new notice or message
 // @route   POST /notices
-// @access  Private (Teachers/Admin)
+// @access  Private
 const createNotice = asyncHandler(async (req, res) => {
-    // --- THIS IS THE FIX ---
-    // The syntax was 'of req.body', which is incorrect.
-    // It has been corrected to '= req.body'.
     const { title, content, target, authorId, type, messageType } = req.body;
 
     if (!title || !content || !target || !authorId) {
@@ -41,25 +36,9 @@ const createNotice = asyncHandler(async (req, res) => {
 });
 
 
-
-// @desc    Update a notice (not used in frontend, but good to have)
-// @route   PUT /notices/:id
-// @access  Private (Author/Admin)
-const updateNotice = asyncHandler(async (req, res) => {
-    const notice = await Notice.findById(req.params.id);
-    if (notice) {
-        Object.assign(notice, req.body);
-        const updatedNotice = await notice.save();
-        res.json(updatedNotice);
-    } else {
-        res.status(404);
-        throw new Error('Notice not found');
-    }
-});
-
 // @desc    Delete a notice
 // @route   DELETE /notices/:id
-// @access  Private (Author/Admin)
+// @access  Private
 const deleteNotice = asyncHandler(async (req, res) => {
     const notice = await Notice.findById(req.params.id);
     if (notice) {
@@ -71,10 +50,14 @@ const deleteNotice = asyncHandler(async (req, res) => {
     }
 });
 
-// --- THIS IS THE UPGRADED REACTION FUNCTION ---
+
+// --- THIS IS THE FINALIZED REACTION FUNCTION ---
+// @desc    Add, update, or remove a reaction from a notice
+// @route   POST /notices/:noticeId/react
+// @access  Private
 const reactToNotice = asyncHandler(async (req, res) => {
     const { noticeId } = req.params;
-    const { userId, reactionType } = req.body;
+    const { userId, reactionType } = req.body; // reactionType will be an emoji like "👍"
 
     if (!userId || !reactionType) {
         return res.status(400).json({ message: 'User ID and reaction type are required.' });
@@ -85,34 +68,36 @@ const reactToNotice = asyncHandler(async (req, res) => {
         return res.status(404).json({ message: 'Notice not found.' });
     }
 
-    // Find if the user has already reacted
+    // Find if the user has already reacted to this notice.
     const existingReactionIndex = notice.reactions.findIndex(r => r.userId.toString() === userId);
 
     if (existingReactionIndex > -1) {
-        // User has reacted before
+        // CASE 1: The user has already reacted.
         const existingReaction = notice.reactions[existingReactionIndex];
         
         if (existingReaction.type === reactionType) {
-            // User is clicking the same reaction again, so we remove it (toggle off)
+            // Sub-Case A: They clicked the SAME emoji again. We remove their reaction (toggle off).
             notice.reactions.splice(existingReactionIndex, 1);
         } else {
-            // User is changing their reaction
+            // Sub-Case B: They clicked a DIFFERENT emoji. We update their reaction to the new one.
             existingReaction.type = reactionType;
         }
     } else {
-        // User is reacting for the first time
+        // CASE 2: The user is reacting for the first time. Add the new reaction to the array.
         notice.reactions.push({ userId, type: reactionType });
     }
 
+    // Save the changes to the notice document in the database.
     const updatedNotice = await notice.save();
+    
+    // Send the fully updated notice back to the frontend so the UI can refresh.
     res.json(updatedNotice);
 });
+
 
 module.exports = {
     getNotices,
     createNotice,
-    updateNotice, // Keep this if you use it
     deleteNotice,
-    reactToNotice // Ensure this is exported
+    reactToNotice // Export the new function
 };
-

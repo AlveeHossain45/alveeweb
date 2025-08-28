@@ -5,13 +5,11 @@ const Subject = require('../models/subject.model.js'); // <-- 1. Import Subject
 const Section = require('../models/section.model.js'); // <-- 2. Import Section
 
 const getDepartments = asyncHandler(async (req, res) => {
-    // No changes needed here
     const departments = await Department.find({});
     res.json(departments);
 });
 
 const createDepartment = asyncHandler(async (req, res) => {
-    // No changes needed here
     const { name } = req.body;
     if (!name) {
         res.status(400);

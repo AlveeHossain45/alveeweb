@@ -38,9 +38,9 @@ export const renderDashboard = async () => {
         const upcomingExams = exams
             .filter(e => e.sectionId?.id === currentUser.sectionId && new Date(e.date) >= new Date())
             .sort((a, b) => new Date(a.date) - new Date(b.date));
-        const relevantNotices = allNotices
-            .filter(n => ['All', 'Student', `class_${currentUser.classId}`, currentUser.id].includes(n.target))
-            .sort((a, b) => new Date(b.date) - new Date(a.date));
+        const relevantNotices = allNotices.filter(n => 
+            n.target && ['All', 'Student', `section_${currentUser.sectionId}`, currentUser.id].includes(n.target)
+        ).sort((a, b) => new Date(b.date) - new Date(a.date));
         const overdueBooksCount = store.get('library', 'transactions')
             .filter(t => t.memberId === currentUser.id && calculateOverdueDays(t.dueDate) > 0).length;
 

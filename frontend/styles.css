@@ -503,3 +503,115 @@
     font-size: 0.875rem;
     color: #94a3b8;
 }
+
+/* --- ADD THIS NEW CSS FOR PORTAL BUTTONS --- */
+.portal-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem; /* 12px */
+    padding: 1.5rem 1rem; /* 24px 16px */
+    background-color: rgba(30, 41, 59, 0.6); /* slate-800 with transparency */
+    border: 1px solid #334155; /* slate-700 */
+    border-radius: 0.75rem; /* 12px */
+    color: #cbd5e1; /* slate-300 */
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+}
+
+.portal-btn:hover {
+    background-color: #334155; /* slate-700 */
+    border-color: #38bdf8; /* sky-400 */
+    color: #ffffff;
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(56, 189, 248, 0.1), 0 4px 6px -4px rgba(56, 189, 248, 0.1);
+}
+
+.portal-btn i {
+    font-size: 1.5rem; /* 24px */
+}
+
+.portal-btn span {
+    font-size: 0.875rem; /* 14px */
+}
+/* --- END OF NEW CSS --- */
+ .sidebar-link .fa-tachometer-alt,
+    .sidebar-link .fa-clock { /* Dashboard & Timetable */
+        color: #38bdf8; /* sky-400 */
+    }
+    .sidebar-link .fa-user-graduate { /* Students */
+        color: #4ade80; /* green-400 */
+    }
+    .sidebar-link .fa-chalkboard-teacher,
+    .sidebar-link .fa-chalkboard-user { /* Teachers */
+        color: #facc15; /* yellow-400 */
+    }
+    .sidebar-link .fa-users-cog,
+    .sidebar-link .fa-users { /* Staff Management */
+        color: #2dd4bf; /* teal-400 */
+    }
+    .sidebar-link .fa-sitemap,
+    .sidebar-link .fa-building { /* Academic Structure / Departments */
+        color: #a78bfa; /* violet-400 */
+    }
+    .sidebar-link .fa-calendar-alt { /* Timetable / Calendar */
+        color: #fb923c; /* orange-400 */
+    }
+    .sidebar-link .fa-file-export,
+    .sidebar-link .fa-file-invoice-dollar { /* Financial Reports / Fees */
+        color: #34d399; /* emerald-400 */
+    }
+    .sidebar-link .fa-bullhorn { /* Notice Board */
+        color: #f87171; /* red-400 */
+    }
+    .sidebar-link .fa-book-open-reader,
+    .sidebar-link .fa-book-reader,
+    .sidebar-link .fa-book-open { /* Library */
+        color: #e879f9; /* fuchsia-400 */
+    }
+    .sidebar-link .fa-bus,
+    .sidebar-link .fa-school-flag { /* Transport / Classes */
+        color: #60a5fa; /* blue-400 */
+    }
+    .sidebar-link .fa-user-circle { /* Profile */
+        color: #48dbcf; /* slate-400 */
+    }
+    .sidebar-link .fa-calendar-check { /* Attendance / Exams */
+        color: #f472b6; /* pink-400 */
+    }
+    .sidebar-link .fa-file-signature { /* Exams */
+        color: #c084fc; /* purple-400 */
+    }
+    .sidebar-link .fa-chart-pie { /* Accountant Dashboard */
+        color: #818cf8; /* indigo-400 */
+    }
+     .sidebar-link .fa-money-check-alt { /* Salary */
+        color: #22c55e; /* green-500 */
+    }
+    .sidebar-link .fa-receipt { /* Expenses */
+        color: #f59e0b; /* amber-500 */
+    }
+    /* --- ADD THIS NEW CSS FOR VIBRANT PORTAL ICONS --- */
+    .portal-btn .fa-user-shield { /* Administration */
+        color: #3894df; /* violet-400 */
+    }
+    .portal-btn .fa-chalkboard-teacher { /* Teacher */
+        color: #facc15; /* yellow-400 */
+    }
+    .portal-btn .fa-user-graduate { /* Student */
+        color: #4ade80; /* green-400 */
+    }
+    .portal-btn .fa-file-invoice-dollar { /* Accountant */
+        color: #d37334; /* emerald-400 */
+    }
+    .portal-btn .fa-book-reader { /* Librarian */
+        color: #e879f9; /* fuchsia-400 */
+    }
+
+    /* Keep the icon color white on hover to match the text */
+    .portal-btn:hover i {
+        color: #ffffff;
+    }
+    /* --- END OF NEW CSS --- */

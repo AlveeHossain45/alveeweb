@@ -9,7 +9,7 @@ import { currentUser, ui } from '../ui.js';
 import { renderNoticesPage } from '../pages/notices.js';
 
 // Your API base URL
-const API_BASE_URL = 'https://alveeweb.vercel.app';
+const API_BASE_URL = 'https://edusysv1.vercel.app';
 
 // Safely compose URLs (ensures single slash between base and path)
 const apiUrl = (path) => `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
@@ -44,123 +44,53 @@ export function getSkeletonLoaderHTML(type = 'table') {
 
 // --- THIS FUNCTION WAS REPLACED TO USE FETCH AND YOUR API BASE URL ---
 export async function openAdvancedMessageModal(replyToUserId = null, replyToUserName = null) {
-    const classes = store.get('classes') || [];
+    const sections = store.get('sections') || [];
     const teacherMap = store.getMap('teachers') || new Map();
-    const studentsMap = store.getMap('students') || new Map();
-
-    // Get users list robustly from store (fixes Object.values('users') bug)
-    let users = [];
-    const usersFromStore = store.get('users');
-    if (Array.isArray(usersFromStore)) {
-        users = usersFromStore;
-    } else {
-        const usersMap = store.getMap('users');
-        if (usersMap && typeof usersMap.values === 'function') {
-            users = Array.from(usersMap.values());
-        }
-    }
-
-    const allStaff = users
-        .filter(user => user.role && user.role !== 'Student')
-        .map(user => {
-            let staffName = user.name || 'Unnamed Staff';
-            let staffTargetId = user.id || user.email || user.username;
-
-            if (user.role === 'Teacher' && user.teacherId) {
-                const teacherDetails = teacherMap.get(user.teacherId);
-                if (teacherDetails) {
-                    staffName = teacherDetails.name || staffName;
-                    staffTargetId = teacherDetails.id || user.teacherId;
-                } else {
-                    staffTargetId = user.teacherId;
-                }
-            }
-
-            return { id: String(staffTargetId), name: staffName, role: user.role };
-        });
-
+    let users = Array.isArray(store.get('users')) ? store.get('users') : Array.from(store.getMap('users')?.values() || []);
+    const allStaff = users.filter(u => u.role && u.role !== 'Student').map(u => ({ id: String(u.id), name: u.name, role: u.role }));
     let modalTitle = 'Send New Notice / Message';
-    let isReply = false;
-    if (replyToUserId && replyToUserName) {
-        modalTitle = `Reply to ${replyToUserName}`;
-        isReply = true;
-    }
+    let isReply = !!(replyToUserId && replyToUserName);
+    if (isReply) modalTitle = `Reply to ${replyToUserName}`;
 
-    const groupedOptions = {
-        'Broadcasts': [],
-        'Classes': [],
-        'Direct to Staff': [],
-        'Direct to Student': []
-    };
+    const groupedOptions = { 'Broadcasts': [], 'Sections': [], 'Direct to Staff': [], 'Direct to Student': [] };
 
-    // Populate Broadcast options
     if (currentUser.role === 'Admin') {
-        groupedOptions['Broadcasts'].push(
-            { value: 'All', label: 'Everyone (All Staff & Students)' },
-            { value: 'Staff', label: 'All Staff Members' },
-            { value: 'Teacher', label: 'All Teachers' },
-            { value: 'Student', label: 'All Students' }
-        );
+        groupedOptions['Broadcasts'].push( { value: 'All', label: 'Everyone' }, { value: 'Staff', label: 'All Staff' }, { value: 'Teacher', label: 'All Teachers' }, { value: 'Student', label: 'All Students' } );
     }
 
-    // Populate Class options
-    const classList = (currentUser.role === 'Teacher') ? classes.filter(c => c.teacherId === currentUser.id) : classes;
-    classList.forEach(c => groupedOptions['Classes'].push({ value: `class_${c.id}`, label: c.name }));
+    // --- ANALYSIS: STANDARDIZATION FIX ---
+    // The value is now `section_${s.id}` instead of `class_${c.id}` to be consistent.
+    const sectionList = (currentUser.role === 'Teacher') ? sections.filter(s => s.classTeacherId?.id === currentUser.id) : sections;
+    sectionList.forEach(s => groupedOptions['Sections'].push({ value: `section_${s.id}`, label: `${s.subjectId?.name || 'Subject'} - Sec ${s.name}` }));
 
-    // Populate Direct Message options
     if (currentUser.role === 'Admin') {
         allStaff.forEach(s => groupedOptions['Direct to Staff'].push({ value: s.id, label: `${s.name} (${s.role})` }));
-    }
-    if (currentUser.role === 'Teacher' && !isReply) { // Only show admin if not a reply
-        groupedOptions['Direct to Staff'].push({ value: 'admin', label: 'Admin' });
     }
     if (isReply) {
         groupedOptions['Direct to Student'].push({ value: replyToUserId, label: `${replyToUserName} (Student)` });
     }
 
-    const optionsHtml = Object.entries(groupedOptions)
-        .filter(([_, options]) => options.length > 0)
-        .map(([group, options]) => `<optgroup label="${group}">${options.map(opt => `<option value="${opt.value}" ${isReply && opt.value === replyToUserId ? 'selected' : ''}>${opt.label}</option>`).join('')}</optgroup>`)
-        .join('');
+    const optionsHtml = Object.entries(groupedOptions).filter(([_, opts]) => opts.length > 0).map(([group, opts]) => `<optgroup label="${group}">${opts.map(opt => `<option value="${opt.value}" ${isReply && opt.value === replyToUserId ? 'selected' : ''}>${opt.label}</option>`).join('')}</optgroup>`).join('');
 
-    const formFields = [
-        { name: 'target', label: 'Recipient', type: 'select', required: true, options: optionsHtml },
-        { name: 'title', label: 'Title / Subject', type: 'text', required: true, value: isReply ? `Re: Your message` : '' },
-        { name: 'content', label: 'Message Content', type: 'textarea', required: true },
-    ];
-
+    const formFields = [ { name: 'target', label: 'Recipient', type: 'select', required: true, options: optionsHtml }, { name: 'title', label: 'Title / Subject', type: 'text', required: true, value: isReply ? `Re: Your message` : '' }, { name: 'content', label: 'Message Content', type: 'textarea', required: true }, ];
+    
     openFormModal(modalTitle, formFields, async (formData) => {
-        const isPrivate = !['All', 'Staff', 'Teacher', 'Student'].includes(formData.target) && !formData.target.startsWith('class_');
-
-        const noticeData = {
-            ...formData,
-            authorId: currentUser.id || currentUser.username,
-            date: new Date().toISOString(),
-            type: isPrivate ? 'private_message' : 'notice'
-        };
-
-        // --- THIS IS THE FIX ---
-        // The manual fetch call with the wrong URL has been replaced.
-        // We now use the centralized apiService, which constructs the correct URL.
-        const result = await apiService.create('notices', noticeData);
-        // --- END OF FIX ---
-
-        if (!result) return;
-
-        showToast(`Message sent successfully!`, 'success');
-
-        if (document.getElementById('notice-list-container')) {
-            renderNoticesPage();
+        const isPrivate = !['All', 'Staff', 'Teacher', 'Student'].includes(formData.target) && !formData.target.startsWith('section_');
+        const noticeData = { ...formData, authorId: currentUser.id, date: new Date().toISOString(), type: isPrivate ? 'private_message' : 'notice' };
+        if (await apiService.create('notices', noticeData)) {
+            showToast(`Message sent successfully!`, 'success');
+            if (document.getElementById('notice-list-container')) { 
+                await store.refresh('notices'); 
+                renderNoticesPage(); 
+            }
         }
     });
 
     if (isReply) {
-        setTimeout(() => {
-            const targetSelect = document.getElementById('target');
-            if (targetSelect) targetSelect.disabled = true;
-        }, 100);
+        setTimeout(() => { const targetSelect = document.getElementById('target'); if (targetSelect) targetSelect.disabled = true; }, 100);
     }
 }
+
 
 export function timeAgo(dateString) {
     const date = new Date(dateString);
@@ -200,26 +130,35 @@ export function createNoticeCard(notice, authorName) {
     const isPrivateMessage = notice.type === 'private_message';
     const allUsersMap = new Map([...store.getMap('students'), ...store.getMap('teachers')]);
 
-    if (isPrivateMessage) {
-        const recipientName = allUsersMap.get(notice.target)?.name || 'a specific user';
-        audienceText = `Private to: ${recipientName}`;
-        borderColorClass = 'border-purple-500';
-    } else if (notice.target === 'All') {
-        audienceText = 'For: Everyone';
-        borderColorClass = 'border-blue-500';
-    } else if (notice.target === 'Student') {
-        audienceText = 'For: All Students';
-        borderColorClass = 'border-green-500';
-    } else if (notice.target === 'Teacher') {
-        audienceText = 'For: All Teachers';
-        borderColorClass = 'border-yellow-500';
-    } else if (notice.target.startsWith('class_')) {
-        const className = store.getMap('classes').get(notice.target.split('_')[1])?.name || 'a Specific Class';
-        audienceText = `For: ${className}`;
-        borderColorClass = 'border-red-500';
+    // --- ANALYSIS: ROBUST DATA HANDLING FIX ---
+    // This `if` block is the permanent solution. It checks if `notice.target`
+    // exists and is a string before trying to use string methods on it.
+    if (notice.target && typeof notice.target === 'string') {
+        if (isPrivateMessage) {
+            const recipientName = allUsersMap.get(notice.target)?.name || 'a specific user';
+            audienceText = `Private to: ${recipientName}`;
+            borderColorClass = 'border-purple-500';
+        } else if (notice.target === 'All') {
+            audienceText = 'For: Everyone';
+            borderColorClass = 'border-blue-500';
+        } else if (notice.target === 'Student') {
+            audienceText = 'For: All Students';
+            borderColorClass = 'border-green-500';
+        } else if (notice.target === 'Teacher') {
+            audienceText = 'For: All Teachers';
+            borderColorClass = 'border-yellow-500';
+        } else if (notice.target.startsWith('section_')) { // Standardized to 'section_'
+            const sectionName = store.getMap('sections').get(notice.target.split('_')[1])?.name || 'a Specific Section';
+            audienceText = `For: Section ${sectionName}`;
+            borderColorClass = 'border-red-500';
+        } else {
+            audienceText = `For: ${notice.target}`;
+            borderColorClass = 'border-teal-500';
+        }
     } else {
-        audienceText = `For: ${notice.target}`;
-        borderColorClass = 'border-teal-500';
+        // This is the fallback for corrupted data. The app will no longer crash.
+        audienceText = 'For: Unknown Audience';
+        borderColorClass = 'border-gray-500';
     }
 
     let actionButtonsHtml = '';
@@ -699,15 +638,10 @@ export function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// in src/utils/helpers.js
 
 export function openFormModal(title, formFields, onSubmit, initialData = {}, onDeleteItem = null, pageConfig = null) {
-    // This line is the fix. It prioritizes the passed 'pageConfig' over the old global variable.
     const config = pageConfig || window.currentPageConfig || {};
-    
     const isEditing = Object.keys(initialData).length > 0;
-    let newProfileImageData = null;
-
     const isProfileModal = ['student', 'teacher', 'staff'].some(keyword => title.toLowerCase().includes(keyword));
     let profileActionsHtml = '';
     let formContainerClasses = 'col-span-1';
@@ -717,6 +651,7 @@ export function openFormModal(title, formFields, onSubmit, initialData = {}, onD
         let avatarSrc, profileName, subtitleHtml = '', actionButtonsHtml = '';
 
         if (isEditing) {
+            // This is correct: profileImage from the DB is a full URL.
             avatarSrc = initialData.profileImage || generateInitialsAvatar(initialData.name);
             profileName = initialData.name;
 
@@ -725,60 +660,28 @@ export function openFormModal(title, formFields, onSubmit, initialData = {}, onD
                 const sectionDetails = store.getMap('sections').get(sectionId);
                 const departmentName = sectionDetails?.subjectId?.departmentId?.name || 'Unassigned';
                 const sectionName = sectionDetails?.name || 'N/A';
-        
-                subtitleHtml = `
-                    <p class="text-slate-400 text-sm">Roll: ${initialData.rollNo || 'N/A'}</p>
-                    <p class="text-slate-400 text-xs mt-1">${departmentName} - Section ${sectionName}</p>
-                `;
+                subtitleHtml = `<p class="text-slate-400 text-sm">Roll: ${initialData.rollNo || 'N/A'}</p><p class="text-slate-400 text-xs mt-1">${departmentName} - Section ${sectionName}</p>`;
             } else if (config.collectionName === 'teachers') {
                 const departmentId = initialData.departmentId?.id || initialData.departmentId;
                 const departmentDetails = store.getMap('departments').get(departmentId);
                 const departmentName = departmentDetails?.name || 'Unassigned';
-
-                // This is the corrected HTML that will display the details you wanted.
-                subtitleHtml = `
-                    <p class="text-slate-400 text-sm">${initialData.email || 'No email provided'}</p>
-                    <p class="text-slate-400 text-xs mt-1">Department: ${departmentName}</p>
-                `;
+                subtitleHtml = `<p class="text-slate-400 text-sm">${initialData.email || 'No email provided'}</p><p class="text-slate-400 text-xs mt-1">Department: ${departmentName}</p>`;
             } else if (config.collectionName === 'staffs') {
                 subtitleHtml = `<p class="text-slate-400">${initialData.jobTitle || 'Staff'}</p>`;
             }
-            
             if (onDeleteItem) {
                 let deleteButtonText = `Delete ${config.title || 'Item'}`;
                 if (config.collectionName === 'staffs') deleteButtonText = 'Delete Staff';
-                actionButtonsHtml = `
-                    <div class="space-y-2 pt-4 border-t border-slate-700">
-                        <button type="button" id="modal-delete-btn" class="w-full text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-2">
-                            <i class="fas fa-trash-alt"></i> ${deleteButtonText}
-                        </button>
-                    </div>`;
+                actionButtonsHtml = `<div class="space-y-2 pt-4 border-t border-slate-700"><button type="button" id="modal-delete-btn" class="w-full text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-2"><i class="fas fa-trash-alt"></i> ${deleteButtonText}</button></div>`;
             }
         } else {
             avatarSrc = generateInitialsAvatar('?');
             profileName = `New ${config.title || 'Profile'}`;
             subtitleHtml = `<p class="text-slate-400 text-sm">Fill in the details to create a profile.</p>`;
         }
-        
-        profileActionsHtml = `
-            <div class="md:col-span-1 space-y-4 text-center p-4 bg-slate-900/50 rounded-lg">
-                <div class="relative group w-24 h-24 mx-auto">
-                    <label for="modal-image-upload" class="cursor-pointer">
-                        <img id="modal-img-preview" src="${avatarSrc}" alt="Profile Picture" class="w-24 h-24 rounded-full object-cover border-4 border-slate-700 shadow-lg">
-                        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i class="fas fa-camera text-xl text-white"></i>
-                        </div>
-                    </label>
-                    <input type="file" id="modal-image-upload" accept="image/*" class="hidden">
-                </div>
-                <div>
-                    <p class="font-bold text-xl text-white">${profileName}</p>
-                    ${subtitleHtml}
-                </div>
-                ${actionButtonsHtml}
-            </div>
-        `;
+        profileActionsHtml = `<div class="md:col-span-1 space-y-4 text-center p-4 bg-slate-900/50 rounded-lg"><div class="relative group w-24 h-24 mx-auto"><label for="modal-image-upload" class="cursor-pointer"><img id="modal-img-preview" src="${avatarSrc}" alt="Profile Picture" class="w-24 h-24 rounded-full object-cover border-4 border-slate-700 shadow-lg"><div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><i class="fas fa-camera text-xl text-white"></i></div></label><input type="file" id="modal-image-upload" accept="image/*,.heic,.heif" class="hidden"></div><div><p class="font-bold text-xl text-white">${profileName}</p>${subtitleHtml}</div>${actionButtonsHtml}</div>`;
     }
+
     
     const createFieldHtml = (field, data) => {
         let value = data[field.name] || field.value || '';
@@ -814,32 +717,70 @@ export function openFormModal(title, formFields, onSubmit, initialData = {}, onD
             el.value = initialData[field.name];
         }
     });
-    if (isProfileModal) {
-        document.getElementById('modal-image-upload').addEventListener('change', (event) => {
+       if (isProfileModal) {
+        // This 'change' listener for the preview is correct as you provided it.
+        document.getElementById('modal-image-upload').addEventListener('change', async (event) => {
             const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    newProfileImageData = e.target.result;
-                    document.getElementById('modal-img-preview').src = newProfileImageData;
-                };
-                reader.readAsDataURL(file);
+            if (!file) return;
+            const submitButton = document.getElementById('modal-form').querySelector('button[type="submit"]');
+            const previewImage = document.getElementById('modal-img-preview');
+            const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+            if (isHeic) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Converting Image...';
+                previewImage.style.filter = 'blur(3px)';
+                try {
+                    const convertedBlob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 });
+                    previewImage.src = URL.createObjectURL(convertedBlob);
+                } catch (error) {
+                    showToast("Could not convert the HEIC image.", "error");
+                    event.target.value = "";
+                } finally {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Save Changes';
+                    previewImage.style.filter = 'none';
+                }
+            } else {
+                previewImage.src = URL.createObjectURL(file);
             }
         });
         const deleteBtn = document.getElementById('modal-delete-btn');
-        if (deleteBtn && onDeleteItem) {
-            deleteBtn.onclick = () => onDeleteItem(initialData.id);
-        }
+        if (deleteBtn && onDeleteItem) { deleteBtn.onclick = () => onDeleteItem(initialData.id); }
     }
+
     document.getElementById('modal-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const formData = Object.fromEntries(new FormData(e.target));
-        if (newProfileImageData) {
-            formData.profileImage = newProfileImageData;
+        const formData = new FormData();
+        const form = e.target;
+        formFields.forEach(field => {
+            if (form.elements[field.name]) {
+                formData.append(field.name, form.elements[field.name].value);
+            }
+        });
+
+        // --- ANALYSIS OF THE FIX: THIS IS THE FINAL, CORRECTED LOGIC ---
+        const imageUploadInput = document.getElementById('modal-image-upload');
+        if (imageUploadInput && imageUploadInput.files.length > 0) {
+            const file = imageUploadInput.files[0];
+            const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+
+            // 1. Check if the selected file is HEIC.
+            if (isHeic) {
+                // 2. If it is, we convert it to a JPEG Blob right before submission.
+                const convertedBlob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 });
+                // 3. We append the CONVERTED blob to FormData, giving it a new filename.
+                formData.append('profileImage', convertedBlob, 'converted.jpeg');
+            } else {
+                // 4. If it's a standard format (JPG, PNG), we append the original file directly.
+                formData.append('profileImage', file);
+            }
         }
+        
         await onSubmit(formData);
         closeAnimatedModal(ui.modal);
     });
+
+
     const modalContent = ui.modal.querySelector('.modal-content');
     if (isProfileModal) {
         modalContent.classList.add('!max-w-4xl');
@@ -853,8 +794,6 @@ export function openFormModal(title, formFields, onSubmit, initialData = {}, onD
         }
     }, { once: true });
 }
-
-
 
 export function exportToCsv(filename, headers, rows) {
     const sanitizeCell = (cell) => {

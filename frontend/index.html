@@ -3,7 +3,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduPortal - Advanced School Management</title>
-    
+     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3e%3cdefs%3e%3clinearGradient id='roofGradient' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3e%3cstop offset='0%25' style='stop-color:%2338bdf8;stop-opacity:1' /%3e%3cstop offset='100%25' style='stop-color:%236366f1;stop-opacity:1' /%3e%3c/linearGradient%3e%3clinearGradient id='wallGradient' x1='0%25' y1='0%25' x2='100%25' y2='0%25'%3e%3cstop offset='0%25' style='stop-color:%231E293B;stop-opacity:1' /%3e%3cstop offset='100%25' style='stop-color:%23334155;stop-opacity:1' /%3e%3c/linearGradient%3e%3c/defs%3e%3cpath d='M100 20 L10 90 L190 90 Z' fill='url(%23roofGradient)' /%3e%3cpath d='M30 90 L30 180 L170 180 L170 90 Z' fill='url(%23wallGradient)' /%3e%3cpath d='M85 180 L85 130 Q 100 120 115 130 L115 180 Z' fill='%2338bdf8' /%3e%3c/svg%3e">
     <script src="https://cdn.tailwindcss.com"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -247,71 +247,115 @@ audio {
     from { opacity: 0; transform: translateY(20px);}
     to { opacity: 1; transform: translateY(0);}
 }
-    </style>
+ </style>
 </head>
 <body>
 
-    <div id="login-page" style="display: none;">
-        <div class="min-h-screen flex items-center justify-center p-4 aurora-background">
-            <div class="w-full max-w-5xl z-10">
-                <div class="bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 shadow-2xl rounded-2xl flex flex-col lg:flex-row overflow-hidden">
-                    <div class="w-full lg:w-1/2 bg-transparent p-8 sm:p-12 flex flex-col items-center justify-center text-center">
-                        <div class="animate-realistic-float mb-6">
-                            <svg class="w-60 h-60" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                <defs>
-                                    <linearGradient id="roofGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#38bdf8; stop-opacity:1" />
-                                        <stop offset="100%" style="stop-color:#6366f1; stop-opacity:1" />
-                                    </linearGradient>
-                                    <linearGradient id="wallGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" style="stop-color:#1E293B; stop-opacity:1" />
-                                        <stop offset="100%" style="stop-color:#334155; stop-opacity:1" />
-                                    </linearGradient>
-                                </defs>
-                                <path d="M100 20 L10 90 L190 90 Z" fill="url(#roofGradient)" />
-                                <path d="M30 90 L30 180 L170 180 L170 90 Z" fill="url(#wallGradient)" />
-                                <path d="M85 180 L85 130 Q 100 120 115 130 L115 180 Z" fill="#38bdf8" />
-                            </svg>
-                        </div>
-                        <h1 class="text-3xl font-extrabold text-white mb-2">EduSys Pro</h1>
-                        <p class="text-slate-400">The Future of School Management</p>
-                    </div>
-                    <div class="w-full lg:w-1/2 bg-slate-700/50 p-8 sm:p-12">
-                        <h2 class="text-2xl font-bold text-white mb-6">Welcome Back</h2>
-                        <form id="login-form" class="space-y-5">
-                            <div>
-                                <label for="username" class="text-sm font-medium text-slate-300">Username/Email Address</label>
-                                <input type="text" id="username" name="username" placeholder="Enter your username or email" required class="mt-1 block w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition">
-                            </div>
-                            <div>
-                                <label for="password" class="text-sm font-medium text-slate-300">Password</label>
-                                <div class="relative mt-1">
-                                    <!-- পাসওয়ার্ড লেখার বক্স -->
-                                    <input type="password" id="password" name="password" placeholder="Enter your password" required class="block w-full px-4 py-3 pr-10 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition">
-                                    
-                                    <!-- Eye icone  -->
-                                    <i class="fas fa-eye absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer text-slate-400 hover:text-white" id="togglePasswordIcon"></i>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between text-sm">
-                                <div class="flex items-center">
-                                    <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 rounded border-slate-500 bg-slate-800 text-sky-600 focus:ring-sky-500">
-                                    <label for="remember-me" class="ml-2 block text-slate-400">Remember me</label>
-                                </div>
-                                <a href="#" class="font-medium text-sky-400 hover:text-sky-300">Forgot password?</a>
-                            </div>
-                            <div>
-                                <button type="submit" class="btn-glow w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:focus:ring-offset-slate-800">
-                                    Sign In
-                                </button>
-                            </div>
-                        </form>
-                        <div id="login-message" class="mt-4 text-center text-sm font-medium text-red-400"></div>
+   <div id="login-page" style="display: none;">
+    <div class="min-h-screen flex items-center justify-center p-4 aurora-background">
+        
+        <!-- Main Login Card Container -->
+        <div class="w-full max-w-5xl z-10 flex flex-col lg:flex-row bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 shadow-2xl rounded-2xl overflow-hidden">
+            
+            <!-- Left Side: Branding -->
+            <div class="w-full lg:w-1/2 bg-transparent p-8 sm:p-12 flex flex-col items-center justify-center text-center">
+                <div class="animate-realistic-float mb-6">
+                    <svg class="w-60 h-60" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="roofGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#38bdf8; stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#6366f1; stop-opacity:1" />
+                            </linearGradient>
+                            <linearGradient id="wallGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#1E293B; stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#334155; stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M100 20 L10 90 L190 90 Z" fill="url(#roofGradient)" />
+                        <path d="M30 90 L30 180 L170 180 L170 90 Z" fill="url(#wallGradient)" />
+                        <path d="M85 180 L85 130 Q 100 120 115 130 L115 180 Z" fill="#38bdf8" />
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-extrabold text-white mb-2">EduSys Pro</h1>
+                <p class="text-slate-400">The Future of School Management</p>
+            </div>
+
+            <!-- Right Side: Dynamic Content -->
+            <div class="w-full lg:w-1/2 bg-slate-700/50 p-8 sm:p-12 flex flex-col justify-center">
+
+                <!-- 1. Portal Selection Screen (Initially Visible) -->
+                <div id="portal-selection">
+                    <h2 class="text-2xl font-bold text-white mb-6">Select Your Portal</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button class="portal-btn" data-portal="Administration">
+                            <i class="fas fa-user-shield"></i>
+                            <span>Administration</span>
+                        </button>
+                        <button class="portal-btn" data-portal="Teacher">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            <span>Teacher</span>
+                        </button>
+                        <button class="portal-btn" data-portal="Student">
+                            <i class="fas fa-user-graduate"></i>
+                            <span>Student</span>
+                        </button>
+                        <button class="portal-btn" data-portal="Accountant">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                            <span>Accountant</span>
+                        </button>
+                        <button class="portal-btn col-span-2" data-portal="Librarian">
+                            <i class="fas fa-book-reader"></i>
+                            <span>Librarian</span>
+                        </button>
                     </div>
                 </div>
+
+                <!-- 2. Login Form Container (Initially Hidden) -->
+                <div id="login-form-container" class="hidden">
+                    <button id="back-to-portals" class="text-sm text-sky-400 hover:text-sky-300 mb-4 flex items-center gap-2">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to Portals
+                    </button>
+                    <h2 id="login-title" class="text-2xl font-bold text-white mb-6">Login</h2>
+                    <form id="login-form" class="space-y-5">
+                        <div>
+                            <label for="username" class="text-sm font-medium text-slate-300">Username/Email Address</label>
+                            <input type="text" id="username" name="username" placeholder="Enter your username or email" required class="mt-1 block w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition">
+                        </div>
+                        <div>
+                            <label for="password" class="text-sm font-medium text-slate-300">Password</label>
+                            <div class="relative mt-1">
+                                <input type="password" id="password" name="password" placeholder="Enter your password" required class="block w-full px-4 py-3 pr-10 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition">
+                                <i class="fas fa-eye absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer text-slate-400 hover:text-white" id="togglePasswordIcon"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center">
+                                <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 rounded border-slate-500 bg-slate-800 text-sky-600 focus:ring-sky-500">
+                                <label for="remember-me" class="ml-2 block text-slate-400">Remember me</label>
+                            </div>
+                            <a href="#" class="font-medium text-sky-400 hover:text-sky-300">Forgot password?</a>
+                        </div>
+                        <div>
+                            <button type="submit" class="btn-glow w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:focus:ring-offset-slate-800">
+                                Sign In
+                            </button>
+                        </div>
+                    </form>
+                    <div id="login-message" class="mt-4 text-center text-sm font-medium text-red-400"></div>
+                </div>
+
+                <!-- 3. Login Success Message (Initially Hidden) -->
+                <div id="login-success-message" class="hidden text-center">
+                    <h2 class="text-2xl font-bold text-white mb-3">Welcome, <span id="success-username"></span>!</h2>
+                    <p class="text-slate-300">You have been logged in successfully.</p>
+                    <p class="text-slate-400 mt-2 italic">Redirecting to your dashboard...</p>
+                </div>
+
             </div>
         </div>
     </div>
+</div>
 
     <div id="app" class="hidden">
         <div class="relative min-h-screen">
@@ -438,10 +482,45 @@ audio {
     <div id="toast-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
     <script type="module" src="src/main.js"></script>
     
     <script>
+        
+    let selectedPortal = '';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const portalSelection = document.getElementById('portal-selection');
+        const loginFormContainer = document.getElementById('login-form-container');
+        const backToPortalsBtn = document.getElementById('back-to-portals');
+        const loginTitle = document.getElementById('login-title');
+        const portalButtons = document.querySelectorAll('.portal-btn');
+
+        portalButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const portalName = button.dataset.portal;
+                
+                selectedPortal = portalName;
+                
+                loginTitle.textContent = `${portalName} Login`;
+                
+                portalSelection.classList.add('hidden');
+                loginFormContainer.classList.remove('hidden');
+            });
+        });
+
+        backToPortalsBtn.addEventListener('click', () => {
+            // Switch views back
+            loginFormContainer.classList.add('hidden');
+            portalSelection.classList.remove('hidden');
+            
+            // Clear the selected portal and any previous error messages
+            selectedPortal = '';
+            document.getElementById('login-message').textContent = '';
+        });
+    });
+
+
         document.addEventListener('DOMContentLoaded', () => {
             if(typeof Chart !== 'undefined') {
                 Chart.defaults.color = '#f1f5f9';

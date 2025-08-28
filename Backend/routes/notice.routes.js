@@ -8,6 +8,7 @@ router.route('/')
     .post(createNotice);
 
 // --- THIS IS THE NEW ROUTE FOR REACTIONS ---
+// It correctly links the URL to the controller function.
 router.route('/:noticeId/react')
     .post(reactToNotice);
 

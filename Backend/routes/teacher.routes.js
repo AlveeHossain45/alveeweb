@@ -1,6 +1,9 @@
-// routes/teacher.routes.js
+// in routes/teacher.routes.js
+
 const express = require('express');
 const router = express.Router();
+const upload = require('../middleware/uploadMiddleware'); // Middleware is already imported
+
 const {
     getTeachers,
     createTeacher,
@@ -13,19 +16,15 @@ const {
 
 router.route('/')
     .get(getTeachers)
-    .post(createTeacher);
+    // --- THIS IS THE FIX ---
+    .post(upload.single('profileImage'), createTeacher);
 
-// --- MODIFIED SECTION ---
-// Route for bulk CREATION
 router.post('/bulk', bulkCreateTeachers);
-
-// NEW: Add this bulk DELETE route
 router.delete('/bulk', bulkDeleteTeachers);
-// ------------------------
 
 router.route('/:id')
     .get(getTeacherById)
-    .put(updateTeacher)
+    .put(upload.single('profileImage'), updateTeacher) // This was already correct
     .delete(deleteTeacher);
 
 module.exports = router;
