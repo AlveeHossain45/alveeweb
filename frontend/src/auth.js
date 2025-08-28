@@ -4,7 +4,7 @@ import { ui, currentUser, setCurrentUser } from './ui.js';
 import { showConfirmationModal } from './utils/helpers.js';
 import { initializeApp } from './main.js';
 
-const API_BASE_URL = 'https://edusysv1.vercel.app';
+const API_BASE_URL = 'https://alveeweb.vercel.app';
 
 /**
  * Hides the main app UI and shows the login page.

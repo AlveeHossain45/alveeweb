@@ -6,7 +6,7 @@ import { currentUser } from './ui.js'; // <-- ADD THIS IMPORT
 
 export const apiService = (() => {
     // The base URL for the API.
-    const API_BASE_URL = 'https://edusysv1.vercel.app';
+    const API_BASE_URL = 'https://alveeweb.vercel.app';
     // This Set correctly identifies which collections need the special /financial prefix.
     const financialCollections = new Set(['fees', 'salaries', 'expenses']);
     // This function is the key. It checks the collection name and adds the prefix if needed.
